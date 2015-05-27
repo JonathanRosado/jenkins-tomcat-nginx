@@ -16,7 +16,7 @@ sudo docker run \
     verigreen/jenkins-tomcat-nginx
 ```
 
-Where `config.yml` is
+Where `config.yml` represents the configuration for each container instance
 ```yaml
 ##################################
 # Use Jenkins' own user database #
@@ -241,7 +241,7 @@ hudson:
   authorizationStrategy:
     attributes: 'matrix-authorization'
     permissions:
-      - 'overall-read:example2@mail.com' # User example2@mail.com only has read permission
+      - 'overall-read:example2@mail.com' # User example2@mail.com will only have read permission
 ```
 
 ### Adding new plugins
@@ -270,7 +270,7 @@ sudo docker run \
     verigreen/jenkins-tomcat-nginx
 ```
 ###Adding users programmatically
-Specify a list of users in the config.yml in the format <USERNAME:PASSWORD>. This list has to be a 'separate document', meaning that you have to separate the list from the others with three dashes ("---"). The container will read each user from the list and create an XML file for each user.
+Specify a list of users in the config.yml in the format <USERNAME:PASSWORD>. This list has to be a 'separate document', meaning that you have to separate the list from the others with three dashes ("---"). The container will parse each list item from the list and create an XML file for each user.
 
 ```yaml
 .
@@ -283,39 +283,36 @@ users:
   - 'user3:password3'
   - 'user4:password4'
 ```
-```
+
 ###Running commands in the Jenkins CLI
 Jenkins has a built-in command line client that allows you to access Jenkins from a script or from your shell. This is convenient for automation of routine tasks, bulk updates, trouble diagnosis, and so on.
 
-You can supply CLI commands to Jenkins by mounting a file at run-time. Here's another way to add a user.
+You can supply CLI commands to Jenkins listing the commands in the config.yml.
 
 `cli.txt`
-```groovy
-echo 'jenkins.model.Jenkins.instance.securityRealm.createAccount("admin", "password")'
-``` 
-
-`Docker run`
-```bash
-sudo docker run \
-    -d \
-    -p $PORT_FOR_JENKINS:8081 \
-    -v path/to/cli.txt:/cli.txt \
-    verigreen/jenkins-tomcat-nginx
+```yaml
+.
+.
+.
+---
+commands:
+  - "echo 'jenkins.model.Jenkins.instance.securityRealm.createAccount(\"admin\", \"password\")'"
+  - "echo 'restart'"
 ```
 
-This command will create a new user within Jenkins own user database.
+These commands will create a new user within Jenkins own user database and restart the server.
 
 ### Adding new jobs
 
-In jenkins, it is possible to configure a job by creating custom XML files that describe the job. However, this container *supports* the use the [Job DSL plugin](https://github.com/jenkinsci/job-dsl-plugin/wiki/Tutorial---Using-the-Jenkins-Job-DSL) by allowing the specification of jobs using a `groovy` DSL and adding mapping those jobs to the container at runtime using the `-v /path/to/sample_jobs.groovy:/var/tmp/jobs.groovy` volume mapping.
+In jenkins, it is possible to configure a job by creating custom XML files that describe the job. However, this container *supports* the use of the [Job DSL plugin](https://github.com/jenkinsci/job-dsl-plugin/wiki/Tutorial---Using-the-Jenkins-Job-DSL) by allowing the specification of jobs using a `groovy` DSL. Simply map the groovy script to the container's root directory `-v /path/to/sample_jobs.groovy:/var/tmp/jobs.groovy`.
 
 We recommend that you take a look at the [tutorial](https://github.com/jenkinsci/job-dsl-plugin/wiki/Tutorial---Using-the-Jenkins-Job-DSL) for using the DSL plugin before attempting this.
 
-Once you have written some plugins, add them to `/path/to/sample_jobs.groovy` file. It is *required* that the file ends with `.groovy` extension. It should look something similar to the following:
+Once you have written some jobs, add them to `/path/to/sample_jobs.groovy` file. It is *required* that the file ends with `.groovy` extension. It should look something similar to the following:
 
 ```groovy
 // Example of sample_jobs.groovy
-job('NAME-groovy') { //for the script's sake, please add the *-groovy to your groovy defined job
+job('NAME-groovy') { //To separate groovy jobs from other, please add the *-groovy to your groovy defined job
     scm {
         git('git://github.com/jgritman/aws-sdk-test.git')
     }

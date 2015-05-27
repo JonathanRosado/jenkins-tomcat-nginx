@@ -54,7 +54,7 @@ RUN apt-get update && apt-get install -y  \
 	mv apache-tomcat* tomcat && \
 	rm -rf /tomcat/webapps/* && \
 	curl -L http://mirrors.jenkins-ci.org/war-stable/$JENKINS_VERSION/jenkins.war -o /tomcat/webapps/ROOT.war && \
-	mkdir /tomcat/webapps/ROOT && cd /tomcat/webapps/ROOT && jar -xvf '/tomcat/webapps/ROOT.war' && cd / \
+	mkdir /tomcat/webapps/ROOT && cd /tomcat/webapps/ROOT && jar -xvf '/tomcat/webapps/ROOT.war' && cd / && \
 	rm -rf /var/lib/apt/lists/* && \
 	mkdir -p /tomcat/webapps/ROOT/ref/init.groovy.d && \
 	mkdir -p /var/log/nginx/jenkins/
