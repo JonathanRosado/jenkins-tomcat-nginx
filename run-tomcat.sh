@@ -1,18 +1,196 @@
 #!/bin/bash
 
-if [ ! -f /.tomcat_admin_created ]; then
-    /create_tomcat_admin_user.sh
+echo "RUN: From run.sh"
+
+# Aliases
+declare -A ALIAS
+
+ALIAS["ldap-authentication"]="['class=hudson.security.LDAPSecurityRealm','plugin=ldap@1.6']"
+ALIAS["login-authorization"]="['class=hudson.security.FullControlOnceLoggedInAuthorizationStrategy']"
+ALIAS["database-authentication"]="['class=hudson.security.HudsonPrivateSecurityRealm']"
+ALIAS["matrix-authorization"]="['class=hudson.security.ProjectMatrixAuthorizationStrategy']"
+ALIAS["unsecured-authorization"]="['class=hudson.security.AuthorizationStrategy$Unsecured']"
+
+ALIAS["credentials-create"]="com.cloudbees.plugins.credentials.CredentialsProvider.Create"
+ALIAS["credentials-delete"]="com.cloudbees.plugins.credentials.CredentialsProvider.Delete"
+ALIAS["credentials-manage-domains"]="com.cloudbees.plugins.credentials.CredentialsProvider.ManageDomains"
+ALIAS["credentials-update"]="com.cloudbees.plugins.credentials.CredentialsProvider.Update"
+ALIAS["credentials-view"]="com.cloudbees.plugins.credentials.CredentialsProvider.View"
+
+ALIAS["view-configure"]="hudson.model.View.Configure"
+ALIAS["view-create"]="hudson.model.View.Create"
+ALIAS["view-delete"]="hudson.model.View.Delete"
+ALIAS["view-read"]="hudson.model.View.Read"
+
+ALIAS["scm-tag"]="hudson.scm.SCM.Tag"
+
+ALIAS["run-delete"]="hudson.model.Run.Delete"
+ALIAS["run-update"]="hudson.model.Run.Update"
+
+ALIAS["job-build"]="hudson.model.Item.Build"
+ALIAS["job-cancel"]="hudson.model.Item.Cancel"
+ALIAS["job-configure"]="hudson.model.Item.Configure"
+ALIAS["job-create"]="hudson.model.Item.Create"
+ALIAS["job-delete"]="hudson.model.Item.Delete"
+ALIAS["job-discover"]="hudson.model.Item.Discover"
+ALIAS["job-read"]="hudson.model.Item.Read"
+ALIAS["job-workspace"]="hudson.model.Item.Workspace"
+
+ALIAS["overall-administer"]="hudson.model.Hudson.Administer"
+ALIAS["overall-configure-update-center"]="hudson.model.Hudson.ConfigureUpdateCenter"
+ALIAS["overall-read"]="hudson.model.Hudson.Read"
+ALIAS["overall-run-scripts"]="hudson.model.Hudson.RunScripts"
+ALIAS["overall-upload-plugins"]="hudson.model.Hudson.UploadPlugins"
+
+ALIAS["slave-build"]="hudson.model.Computer.Build"
+ALIAS["slave-configure"]="hudson.model.Computer.Configure"
+ALIAS["slave-connect"]="hudson.model.Computer.Connect"
+ALIAS["slave-create"]="hudson.model.Computer.Create"
+ALIAS["slave-delete"]="hudson.model.Computer.Delete"
+ALIAS["slave-disconnect"]="hudson.model.Computer.Disconnect"
+
+# Regex is kept uncompressed for readability and maintainability
+ALIAS_REGEX="^(ldap-authentication|login-authorization|database-authentication|matrix-authorization|\
+credentials-create|credentials-delete|credentials-manage-domains|credentials-update|\
+credentials-view|view-configure|view-create|view-delete|view-read|scm-tag|run-delete|\
+run-update|job-build|job-cancel|job-configure|job-create|job-delete|job-discover|\
+job-read|job-workspace|overall-administer|overall-configure-update-center|overall-read|\
+overall-run-scripts|overall-upload-plugins|slave-build|slave-configure|slave-connect|slave-create|\
+slave-delete|slave-disconnect|unsecured-authorization)$"
+
+function take_care_of_special_cases {
+	NODE_PATH=$1
+	NODE_NAME=$2
+	NODE_VALUE=$3
+
+	if [[ "$NODE_NAME" == "attributes" ]]; then
+
+		[[ "$NODE_VALUE" =~ $ALIAS_REGEX ]] && \
+			NODE_VALUE="${ALIAS[$NODE_VALUE]}"
+
+		LIST=$(python -c "for i in ${NODE_VALUE}: print i;")
+
+		IFS=$'\n'
+		for i in $LIST; do
+			ATTR_NAME=$(echo $i | awk -F'=' '{print $1}')
+			ATTR_VALUE=$(echo $i | awk -F'=' '{print $2}')
+			OPERATION="$(xmlstarlet ed -i "$NODE_PATH" -t attr -n $ATTR_NAME -v $ATTR_VALUE /config.xml)"
+			if [[ -n $OPERATION ]]; then
+				echo "$OPERATION" > /config.xml
+			fi
+		done
+		unset IFS
+
+		return 1;
+
+	elif [[ "${NODE_NAME}" == "plugins" ]]; then
+
+		LIST=$(python -c "for i in ${NODE_VALUE}: print i;")
+
+		IFS=$'\n'
+		for i in $LIST; do
+			echo $i >> /plugins.txt
+		done
+		unset IFS
+
+		return 1;
+
+	elif [[ "${NODE_NAME}" == "certificates" ]]; then
+
+		LIST=$(python -c "for i in ${NODE_VALUE}: print i;")
+
+		IFS=$'\n'
+		for i in $LIST; do
+			echo $i >> /SSLcerts.txt
+		done
+		unset IFS
+
+		return 1;
+
+	elif [[ "${NODE_NAME}" == "commands" ]]; then
+
+		LIST=$(python -c "for i in ${NODE_VALUE}: print i;")
+
+		IFS=$'\n'
+		for i in $LIST; do
+			echo $i >> /cli.txt
+		done
+		unset IFS
+
+		return 1;
+
+	elif [[ "${NODE_NAME}" == "users" ]]; then
+
+		LIST=$(python -c "for i in ${NODE_VALUE}: print i;")
+
+		IFS=$'\n'
+		for i in $LIST; do
+			echo $i >> /users.txt
+		done
+		unset IFS
+
+		return 1;
+
+	elif [[ "$NODE_PATH" == "/hudson/securityRealm" ]] && [[ "$NODE_NAME" == "managerPassword" ]]; then
+
+		NODE_VALUE=$(echo $NODE_VALUE | base64 | awk -F'=' '{print $1}')
+
+		echo -e "$(xmlstarlet ed -s "$NODE_PATH" -t elem -n "$NODE_NAME" -v "$NODE_VALUE" /config.xml)" > /config.xml
+
+		return 1;
+
+	elif [[ "$NODE_PATH" == "/hudson/authorizationStrategy" ]] && [[ "$NODE_NAME" == "permissions" ]]; then
+
+		LIST=$(python -c "for i in ${NODE_VALUE}: print i;")
+
+		IFS=$'\n'
+		for i in $LIST; do
+			PERMISSION=$(echo $i | awk -F':' '{print $1}');
+			USER=$(echo $i | awk -F':' '{print $2}');
+
+			if [[ "${PERMISSION}" =~ $ALIAS_REGEX ]]; then
+				i="${ALIAS[$PERMISSION]}:${USER}"
+			fi
+
+		    echo -e "$(xmlstarlet ed -s "$NODE_PATH" -t elem -n "permission" -v "$i" /config.xml)" > /config.xml
+		done
+		unset IFS
+
+		return 1;
+
+	else
+		return 0;
+	fi
+}
+
+# Parse and dispatch config.yml
+if [[ -f /config.yml ]]; then 
+	echo -e "RUN: config.yml detected."
+
+	echo -e "$(xmlstarlet ed -d "/hudson/securityRealm" /config.xml)" > /config.xml 
+	echo -e "$(xmlstarlet ed -i "/hudson/disableRememberMe" -t elem -n securityRealm -v "" /config.xml)" > /config.xml
+
+	echo -e "$(xmlstarlet ed -d "/hudson/authorizationStrategy" /config.xml)" > /config.xml 
+	echo -e "$(xmlstarlet ed -a "/hudson/useSecurity" -t elem -n authorizationStrategy -v "" /config.xml)" > /config.xml
+
+	IFS=$'\n'
+	for i in $(python configparser.py config.yml); do 
+		NODE_PATH=$(echo $i | awk -F'|' '{print $1}' | awk -F'/' -v OFS='/' '{$NF="" ;print $0}' | sed 's/.\{1\}$//');
+		NODE_NAME=$(echo $i | awk -F'|' '{print $1}' | awk -F'/' '{print $(NF)}');
+		NODE_VALUE=$(echo $i | awk -F'|' '{print $2}');
+
+		if take_care_of_special_cases "$NODE_PATH" "$NODE_NAME" "$NODE_VALUE"; then
+			echo -e "$(xmlstarlet ed -s "$NODE_PATH" -t elem -n "$NODE_NAME" -v "$NODE_VALUE" /config.xml)" > /config.xml
+		fi
+	done
+	unset IFS
 fi
 
 # Dispatch files to the appropriate directory
-# -v path/to/nginx.conf:/etc/nginx/nginx.conf:ro \
-# 	-v path/to/supervisord.conf:/etc/supervisor/conf.d/supervisord.conf:ro \
-# 	-v path/to/jenkins/log/directory/:/var/log/nginx/jenkins/ \
-# 	-v path/to/supervisor/log/directory:/var/log/supervisor/ \
-# 	-v path/to/plugins.txt:/usr/share/jenkins/plugins.txt \
-# 	-v path/to/sample_jobs.groovy:/var/tmp/jobs.groovy \
-# 	-v path/to/jenkins_home:/var/jenkins_home \
-
+[[ -f /nginx.conf ]] && \
+	cd /etc/nginx/ && \
+	rm nginx.conf && \
+	ln -s /nginx.conf
 [[ -f /supervisor.conf ]] && \
 	cd /etc/supervisor/conf.d/ && \
 	rm supervisord.conf && \
@@ -24,21 +202,104 @@ fi
 [[ -f /jobs.groovy ]] && \
 	cd /var/tmp/ && \
 	ln -s /jobs.groovy
+[[ -f /cli.txt ]] && \
+	cd /var/tmp/ && \
+	ln -s /cli.txt
 [[ -d /jenkins_home ]] && \
 	cd /var/ && \
 	rm -r jenkins_home && \
 	ln -s /jenkins_home
 
+# Copy root config and users/ to jenkins_home
+cp -f /config.xml /var/jenkins_home/config.xml
+
+# If SSLcerts.txt was mounted to the root folder,
+# read the file line by line, parsing each line
+# and feeding them to the InstallCert tool
+# found in the Cert-Install-Tool/ directory at root
+[[ -f /SSLcerts.txt ]] && \
+	cd /Cert-Install-Tool && \
+	while read i; 
+	do 
+		SERVER_NAME=$(echo $i | awk -F':' '{print $1}'); 
+		PORT_NUMBER=$(echo $i | awk -F':' '{print $2}');
+
+		echo "RUN: Downloading certificate $CERT_NUMBER for $SERVER_NAME:$PORT_NUMBER"
+
+		echo -n | openssl s_client -connect $SERVER_NAME:$PORT_NUMBER | \
+		sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > /tmp/$SERVER_NAME.crt
+
+		keytool -import -trustcacerts -keystore /usr/lib/jvm/java-7-openjdk-amd64/jre/lib/security/cacerts -storepass changeit \
+		-noprompt -alias "${SERVER_NAME}cert" -file /tmp/$SERVER_NAME.crt
+
+	done < /SSLcerts.txt
+		
+
+# If users.txt was mounted,
+# loop through the file and
+# create each user
+[[ -f /users.txt ]] && \
+	echo -e "\n" >> /users.txt && \
+	while read i; 
+	do 
+		USERNAME=$(echo $i | awk -F':' '{print $1}'); 
+		PASSWORD=$(echo $i | awk -F':' '{print $2}');
+
+		echo "RUN: Making account for $USERNAME"
+
+		[[ -d /var/jenkins_home/users ]] || mkdir /var/jenkins_home/users
+
+		mkdir /var/jenkins_home/users/$USERNAME
+
+		# Copy user xml template
+		cp -f /user-template.xml /var/jenkins_home/users/$USERNAME/config.xml
+
+		# Convert password to hash (and add some embedded salt)
+		PASSWORD=$(echo -n "$PASSWORD{oxulLC}" | sha256sum | awk '{print $1}')
+
+		# Replace dummy values in template
+		echo -e "$(xmlstarlet ed -u '/user/fullName' -v "$USERNAME" /var/jenkins_home/users/${USERNAME}/config.xml)" > /var/jenkins_home/users/$USERNAME/config.xml
+		echo -e "$(xmlstarlet ed -u '/user/properties/hudson.security.HudsonPrivateSecurityRealm_-Details/passwordHash' -v "oxulLC:${PASSWORD}" /var/jenkins_home/users/${USERNAME}/config.xml)" \
+			> /var/jenkins_home/users/$USERNAME/config.xml
+
+	done < /users.txt
+
+
+# If $ADMIN_PASSWORD was defined,
+# create a quick admin account
+if [[ ! -z $ADMIN_PASSWORD ]]; then 
+	USERNAME="admin" 
+	PASSWORD=$ADMIN_PASSWORD
+
+	echo "RUN: Making account for $USERNAME"
+
+	[[ -d /var/jenkins_home/users ]] || mkdir /var/jenkins_home/users
+
+	mkdir /var/jenkins_home/users/$USERNAME
+
+	# Copy user xml template
+	cp -f /user-template.xml /var/jenkins_home/users/$USERNAME/config.xml
+
+	# Convert password to hash (and add some embedded salt)
+	PASSWORD=$(echo -n "$PASSWORD{oxulLC}" | sha256sum | awk '{print $1}')
+
+	# Replace dummy values in template
+	echo -e "$(xmlstarlet ed -u '/user/fullName' -v "$USERNAME" /var/jenkins_home/users/${USERNAME}/config.xml)" > /var/jenkins_home/users/$USERNAME/config.xml
+	echo -e "$(xmlstarlet ed -u '/user/properties/hudson.security.HudsonPrivateSecurityRealm_-Details/passwordHash' -v "oxulLC:${PASSWORD}" /var/jenkins_home/users/${USERNAME}/config.xml)" \
+		> /var/jenkins_home/users/$USERNAME/config.xml
+fi
+
 
 # Clean up old groovy jobs (if any)
 # Temporary solution
-rm -r /var/jenkins_home/jobs/*
+rm -r /var/jenkins_home/jobs/*-groovy
 
 
 # Copy the seed job into the jobs directory
+[[ -d /var/tmp/groovy-dsl-job/workspace/ ]] || mkdir -p /var/tmp/groovy-dsl-job/workspace/
 cp -f /var/tmp/jobs.groovy /var/tmp/groovy-dsl-job/workspace/jobs.groovy
-mkdir -p /var/jenkins_home/jobs/ && \
- cp -f -R /var/tmp/groovy-dsl-job/ /var/jenkins_home/jobs/groovy-dsl-job/
+[[ -d /var/jenkins_home/jobs/ ]] || mkdir -p /var/jenkins_home/jobs/
+cp -f -R /var/tmp/groovy-dsl-job/ /var/jenkins_home/jobs/groovy-dsl-job/
 
 PLUGINS_INSTALLED="true"
 

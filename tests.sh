@@ -17,12 +17,11 @@
 # ```
 
 
-
 # Exit the script if any variable is used without being initialized
 set -u
 
 # Exit the script if any statement returns a non-true return value (so errors dont keep piling up)
-set -e
+#set -e
 
 
 # Verbose output
@@ -49,20 +48,23 @@ function show_usage {
 # Prepare environment for testing
 function prepare_environment {
 	$verbose && \
-	 echo "Preparing Environment..." 
+	 echo "Preparing Environment..."
 
 	$verbose && \
 	 echo "For this test we will be installing two groovy jobs and the campfire plugin"
 
 	# Make a directory for the container to use as volume
+  [[ -d /tmp/jenkins_test_dir/jenkins_home ]] && sudo rm -r /tmp/jenkins_test_dir/jenkins_home
 	mkdir -p /tmp/jenkins_test_dir/jenkins_home
 
 	# Make a plugins.txt containing the plugins to be installed in the container
-	echo -e "campfire:2.7\nant:1.2\ndocker-plugin:0.8\nssh-slaves:1.6\ndurable-task:0.5" > /tmp/jenkins_test_dir/plugins.txt
+	[[ -f /tmp/jenkins_test_dir/plugins.txt ]] && sudo rm -f /tmp/jenkins_test_dir/plugins.txt
+	echo -e "docker-plugin:0.8\ndurable-task:0.5" > /tmp/jenkins_test_dir/plugins.txt
 
 	# Make a groovy file containing the jobs the container must have
+	[[ -f /tmp/jenkins_test_dir/my_jobs.groovy ]] && sudo rm -f /tmp/jenkins_test_dir/my_jobs.groovy
 	echo -e \
-	" 
+	"
 	job('DSL-Tutorial-3-Test-groovy') {
 	    scm {
 	        git('git://github.com/jgritman/aws-sdk-test.git')
@@ -89,34 +91,31 @@ function prepare_environment {
 	" > /tmp/jenkins_test_dir/my_jobs.groovy
 
 	# Build image
-	sudo docker build --quiet=true -t jenkins_test_img . > /dev/null
+	sudo docker build -t jenkins_test_img .
 
 	# Run container with the files we just made
 	sudo docker run \
 		-d \
 		--name jenkins_test_cont \
 		-p 80:8081 \
-		-v /tmp/jenkins_test_dir/plugins.txt:/usr/share/jenkins/plugins.txt \
-		-v /tmp/jenkins_test_dir/my_jobs.groovy:/var/tmp/jobs.groovy \
-		-v /tmp/jenkins_test_dir/jenkins_home:/var/jenkins_home \
-		jenkins_test_img > /dev/null
+		-v /tmp/jenkins_test_dir/plugins.txt:/plugins.txt \
+		-v /tmp/jenkins_test_dir/my_jobs.groovy:/jobs.groovy \
+		-v /tmp/jenkins_test_dir/jenkins_home:/jenkins_home \
+		jenkins_test_img
 
 	# Wait for Jenkins to start up (Jenkins has to restart the first time)
 	# The loop will exit when Jenkins has successfuly started for the second time
 	jenkinsFound=false
-	toggles=0
-	while [[ $toggles < 3 ]];
+	while [[ $jenkinsFound == false ]];
 	do
 		# If the GET request doesn't return an OK status, Jenkins is not running correctly
 		if [[ ! $( curl -s --head --request GET http://localhost:80/ | grep "200 OK" ) ]]; then
 			$verbose && \
 			 echo "Jenkins is not running. Maybe it's initializing? Let's Try again."
-			[[ $jenkinsFound = true ]] && toggles=$(($toggles + 1))
 			jenkinsFound=false
 		else
 			$verbose && \
 			 echo "Jenkins is running!"
-			[[ $jenkinsFound = false ]] && toggles=$(($toggles + 1))
 			jenkinsFound=true
 		fi
 	done
@@ -130,7 +129,7 @@ function prepare_environment {
 function cleanup_environment {
 
 	$verbose && \
-	 echo "========Cleaning Up Environment========" 
+	 echo "========Cleaning Up Environment========"
 
 	# Remove test directory
 	sudo rm -r /tmp/jenkins_test_dir > /dev/null
@@ -150,10 +149,10 @@ function test_has_default_plugins {
 	status=true
 
 	# Grab the list of default plugins from the text file
-	for i in $( cat default_jenkins_plugins.txt | awk -F':' '{print $1}' ); 
-	do 
+	for i in $( cat default_jenkins_plugins.txt | awk -F':' '{print $1}' );
+	do
 		# Loop through each default plugin and see if it's in the plugins directory
-	    if [[ $( sudo docker exec -ti jenkins_test_cont ls /var/jenkins_home/plugins | grep $i ) ]]; then 
+	    if [[ $( sudo docker exec -ti jenkins_test_cont ls /var/jenkins_home/plugins | grep $i ) ]]; then
 	        $verbose && \
 	         echo "$success The default plugin $i was found in Jenkins' home directory"
 	    else
@@ -161,7 +160,7 @@ function test_has_default_plugins {
 	    	 $verbose && \
 	    	 echo "$failure The default plugin $i was NOT found in Jenkins' home directory"
 	    	return 1
-	    fi 
+	    fi
 	done
 
 	printf "$( ( $status && echo $success ) || echo $failure) "
@@ -178,10 +177,10 @@ function test_has_custom_plugins {
 	status=true
 
 	# Grab the list of custom plugins from the text file
-	for i in $( cat /tmp/jenkins_test_dir/plugins.txt | awk -F':' '{print $1}' ); 
-	do 
+	for i in $( cat /tmp/jenkins_test_dir/plugins.txt | awk -F':' '{print $1}' );
+	do
 		# Loop through each custom plugin and see if it's in the plugins directory
-	    if [[ $( sudo docker exec -ti jenkins_test_cont ls /var/jenkins_home/plugins | grep $i ) ]]; then 
+	    if [[ $( sudo docker exec -ti jenkins_test_cont ls /var/jenkins_home/plugins | grep $i ) ]]; then
 	        $verbose && \
 	         echo "$success The custom plugin $i was found in Jenkins' home directory"
 	    else
@@ -189,7 +188,7 @@ function test_has_custom_plugins {
 	    	 $verbose && \
 	    	 echo "$failure The custom plugin $i was NOT found in Jenkins' home directory"
 	    	return 1
-	    fi 
+	    fi
 	done
 
 	printf "$( ( $status && echo $success ) || echo $failure) "
@@ -210,7 +209,7 @@ function test_plugins_are_loaded {
 	for i in $( cat default_jenkins_plugins.txt | awk -F':' '{print $1}' );
 	do
 		# Loop through them and see if they're in the installed section of the webapp
-		if [[ $( curl -s "http://localhost:80/pluginManager/installed" | grep /$i\" ) ]]; then 
+		if [[ $( curl -s "http://localhost:80/pluginManager/installed" | grep /$i\" ) ]]; then
 	        $verbose && \
 	         echo "$success The default plugin $i was found in http://localhost:80/pluginManager/installed"
 	    else
@@ -218,14 +217,14 @@ function test_plugins_are_loaded {
 	    	 $verbose && \
 	    	 echo "$failure The default plugin $i was NOT found in http://localhost:80/pluginManager/installed"
 	    	return 1
-	    fi 
+	    fi
 	done
 
 	# Grab the list of custom plugins from the text file
 	for i in $( cat /tmp/jenkins_test_dir/plugins.txt | awk -F':' '{print $1}' );
 	do
 		# Loop through them and see if they're in the installed section of the webapp
-		if [[ $( curl -s "http://localhost:80/pluginManager/installed" | grep /$i\" ) ]]; then 
+		if [[ $( curl -s "http://localhost:80/pluginManager/installed" | grep /$i\" ) ]]; then
 	        $verbose && \
 	         echo "$success The custom plugin $i was found in http://localhost:80/pluginManager/installed"
 	    else
@@ -233,7 +232,7 @@ function test_plugins_are_loaded {
 	    	 $verbose && \
 	    	 echo "$failure The custom plugin $i was NOT found in http://localhost:80/pluginManager/installed"
 	    	return 1
-	    fi 
+	    fi
 	done
 
 	printf "$( ( $status && echo $success ) || echo $failure) "
@@ -247,13 +246,15 @@ function test_plugins_are_loaded {
 function test_jobs_are_installed {
 
 	# This boolean will represent the failure (or success) of the test
-	status=true 
+	status=true
+
+	sleep 20
 
 	# Grab each job name from the groovy file
-	for i in $( awk '/job/{ print $0 }' /tmp/jenkins_test_dir/my_jobs.groovy | awk -F"'" '{print $2}' ); 
-	do 
+	for i in $( awk '/job/{ print $0 }' /tmp/jenkins_test_dir/my_jobs.groovy | awk -F"'" '{print $2}' );
+	do
 		# Loop through and see if the names appear in the jobs directory
-	    if [[ $( sudo docker exec -ti jenkins_test_cont ls /var/jenkins_home/jobs | grep $i ) ]]; then 
+	    if [[ $( sudo docker exec -ti jenkins_test_cont ls /var/jenkins_home/jobs | grep $i ) ]]; then
 	        $verbose && \
 	         echo "$success The groovy job $i was found in Jenkins' home directory"
 	    else
@@ -261,7 +262,7 @@ function test_jobs_are_installed {
 	    	 $verbose && \
 	    	 echo "$failure The groovy job $i was NOT found in Jenkins' home directory"
 	    	return 1
-	    fi 
+	    fi
 	done
 
 	printf "$( ( $status && echo $success ) || echo $failure) "
@@ -277,10 +278,10 @@ function test_jobs_are_loaded {
 	status=true
 
 	# Grap job names from the groovy file
-	for i in $( awk '/job/{ print $0 }' /tmp/jenkins_test_dir/my_jobs.groovy | awk -F"'" '{print $2}' ); 
-	do 
+	for i in $( awk '/job/{ print $0 }' /tmp/jenkins_test_dir/my_jobs.groovy | awk -F"'" '{print $2}' );
+	do
 		# Loop through each job name and see if they appear under 'jobs'
-	    if [[ $( curl -s "http://localhost:80" | grep /$i/ ) ]]; then 
+	    if [[ $( curl -s "http://localhost:80" | grep /$i/ ) ]]; then
 	        $verbose && \
 	         echo "$success The groovy job $i was found in http://localhost:80/"
 	    else
@@ -288,11 +289,38 @@ function test_jobs_are_loaded {
 	    	 $verbose && \
 	    	 echo "$failure The groovy job $i was NOT found in http://localhost:80/"
 	    	return 1
-	    fi 
+	    fi
 	done
 
 	printf "$( ( $status && echo $success ) || echo $failure) "
 	printf "Checking to see if the jobs are loaded\n"
+
+	return 0
+}
+
+
+# Test to see if redirected links are functional
+function test_redirected_links {
+
+	status=true
+    
+	redirected1=$( curl --head -s localhost:80/credential-store | grep 302 )
+
+	redirected2=$( curl --head -s localhost:80/jenkins100k/ | grep 302 )
+	
+	# Loop through each job name and see if they appear under 'jobs'
+    if [[ redirected1 && redirected2 ]]; then
+        $verbose && \
+         echo "$success The redirected links were found"
+    else
+    	status=false && \
+    	 $verbose && \
+    	 echo "$failure The redirected link were NOT found"
+    	return 1
+    fi
+
+	printf "$( ( $status && echo $success ) || echo $failure) "
+	printf "Checking to see if redirected links are functional\n"
 
 	return 0
 }
@@ -327,6 +355,9 @@ else
         # Verify that groovy jobs are loaded
         test_jobs_are_installed && \
         test_jobs_are_loaded
+
+        # Check if links are being redirected correctly
+        test_redirected_links
 
         # Clean up environment
         cleanup_environment
