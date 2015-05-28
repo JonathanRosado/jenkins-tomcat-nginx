@@ -37,7 +37,7 @@ ENV JENKINS_VERSION=1.596.2 \
 # Install the supervisor process management tool to run both nginx and jetty
 # Install the necessary packages to download and install Tomcat and Jenkins
 # Clean up packages
-RUN apt-get update && apt-get install -y  \
+RUN apt-get update && apt-get install -y -f  \
 	git \
 	wget \
 	curl \
