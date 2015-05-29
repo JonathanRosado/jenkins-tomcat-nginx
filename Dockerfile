@@ -37,27 +37,26 @@ ENV JENKINS_VERSION=1.596.2 \
 # Install the supervisor process management tool to run both nginx and jetty
 # Install the necessary packages to download and install Tomcat and Jenkins
 # Clean up packages
-RUN apt-get update && apt-get install -y -f  \
-	git \
-	wget \
-	curl \
-	supervisor \
- 	openjdk-7-jdk \
- 	ca-certificates \
- 	xmlstarlet && \
-	wget -q https://archive.apache.org/dist/tomcat/tomcat-${TOMCAT_MAJOR_VERSION}/v${TOMCAT_MINOR_VERSION}/bin/apache-tomcat-${TOMCAT_MINOR_VERSION}.tar.gz && \
-	wget -qO- https://archive.apache.org/dist/tomcat/tomcat-${TOMCAT_MAJOR_VERSION}/v${TOMCAT_MINOR_VERSION}/bin/apache-tomcat-${TOMCAT_MINOR_VERSION}.tar.gz.md5 | md5sum -c - && \
-	curl --silent --show-error --retry 5 https://bootstrap.pypa.io/get-pip.py | python2.7 && \
-	pip install pyyaml && \
-	tar zxf apache-tomcat-*.tar.gz && \
-	rm apache-tomcat-*.tar.gz && \
-	mv apache-tomcat* tomcat && \
-	rm -rf /tomcat/webapps/* && \
-	curl -L http://mirrors.jenkins-ci.org/war-stable/$JENKINS_VERSION/jenkins.war -o /tomcat/webapps/ROOT.war && \
-	mkdir /tomcat/webapps/ROOT && cd /tomcat/webapps/ROOT && jar -xvf '/tomcat/webapps/ROOT.war' && cd / && \
-	rm -rf /var/lib/apt/lists/* && \
-	mkdir -p /tomcat/webapps/ROOT/ref/init.groovy.d && \
-	mkdir -p /var/log/nginx/jenkins/
+RUN apt-get update && apt-get install -y -f git 
+RUN apt-get install -y -f wget 
+RUN apt-get install -y -f curl 
+RUN apt-get install -y -f supervisor 
+RUN apt-get install -y -f openjdk-7-jdk 
+RUN apt-get install -y -f ca-certificates 
+RUN apt-get install -y -f xmlstarlet 
+RUN wget -q https://archive.apache.org/dist/tomcat/tomcat-${TOMCAT_MAJOR_VERSION}/v${TOMCAT_MINOR_VERSION}/bin/apache-tomcat-${TOMCAT_MINOR_VERSION}.tar.gz
+RUN wget -qO- https://archive.apache.org/dist/tomcat/tomcat-${TOMCAT_MAJOR_VERSION}/v${TOMCAT_MINOR_VERSION}/bin/apache-tomcat-${TOMCAT_MINOR_VERSION}.tar.gz.md5 | md5sum -c - 
+RUN curl --silent --show-error --retry 5 https://bootstrap.pypa.io/get-pip.py | python2.7 
+RUN pip install pyyaml 
+RUN tar zxf apache-tomcat-*.tar.gz 
+RUN rm apache-tomcat-*.tar.gz 
+RUN mv apache-tomcat* tomcat 
+RUN rm -rf /tomcat/webapps/* 
+RUN curl -L http://mirrors.jenkins-ci.org/war-stable/$JENKINS_VERSION/jenkins.war -o /tomcat/webapps/ROOT.war
+RUN mkdir /tomcat/webapps/ROOT && cd /tomcat/webapps/ROOT && jar -xvf '/tomcat/webapps/ROOT.war' && cd / 
+RUN rm -rf /var/lib/apt/lists/* 
+RUN mkdir -p /tomcat/webapps/ROOT/ref/init.groovy.d 
+RUN mkdir -p /var/log/nginx/jenkins/
 
 # Add script for running Tomcat
 ADD run-tomcat.sh /run.sh

@@ -38,6 +38,26 @@ isOnlineObjective=$failure
 pluginsObjective=$failure
 jobsObjective=$failure
 
+# Config.yaml
+configyml="\n\
+hudson:\n\
+  securityRealm:\n\
+    attributes: 'database-authentication'\n\
+    disableSignup: 'true'\n\
+    enableCaptcha: 'false'\n\
+---\n\
+hudson:\n\
+  authorizationStrategy:\n\
+    attributes: 'login-authorization'\n\
+---\n\
+users:\n\
+  - 'user1:password1'\n\
+  - 'user2:password2'\n\
+plugins:\n\
+  - 'docker-plugin:0.8'\n\
+  - 'durable-task:0.5'\n\
+"
+
 
 # Show Usage
 function show_usage {
@@ -54,12 +74,15 @@ function prepare_environment {
 	 echo "For this test we will be installing two groovy jobs and the campfire plugin"
 
 	# Make a directory for the container to use as volume
-  [[ -d /tmp/jenkins_test_dir/jenkins_home ]] && sudo rm -r /tmp/jenkins_test_dir/jenkins_home
+    [[ -d /tmp/jenkins_test_dir/jenkins_home ]] && sudo rm -r /tmp/jenkins_test_dir/jenkins_home
 	mkdir -p /tmp/jenkins_test_dir/jenkins_home
 
-	# Make a plugins.txt containing the plugins to be installed in the container
-	[[ -f /tmp/jenkins_test_dir/plugins.txt ]] && sudo rm -f /tmp/jenkins_test_dir/plugins.txt
-	echo -e "docker-plugin:0.8\ndurable-task:0.5" > /tmp/jenkins_test_dir/plugins.txt
+	# Make config.yml
+	[[ -f /tmp/jenkins_test_dir/config.yml ]] && sudo rm -f /tmp/jenkins_test_dir/config.yml
+	IFS='%'
+	echo -e $configyml > /tmp/jenkins_test_dir/config.yml
+	unset IFS
+
 
 	# Make a groovy file containing the jobs the container must have
 	[[ -f /tmp/jenkins_test_dir/my_jobs.groovy ]] && sudo rm -f /tmp/jenkins_test_dir/my_jobs.groovy
