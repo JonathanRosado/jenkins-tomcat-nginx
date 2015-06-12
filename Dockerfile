@@ -41,7 +41,8 @@ RUN apt-get update && apt-get install -y -f git
 RUN apt-get install -y -f wget 
 RUN apt-get install -y -f curl 
 RUN apt-get install -y -f supervisor 
-RUN apt-get install -y -f openjdk-7-jdk 
+RUN apt-get install -y -f openjdk-7-jre
+RUN apt-get install -y -f fastjar
 RUN apt-get install -y -f ca-certificates 
 RUN apt-get install -y -f xmlstarlet 
 RUN wget -q https://archive.apache.org/dist/tomcat/tomcat-${TOMCAT_MAJOR_VERSION}/v${TOMCAT_MINOR_VERSION}/bin/apache-tomcat-${TOMCAT_MINOR_VERSION}.tar.gz
@@ -120,6 +121,10 @@ ADD execute-jenkins-cli-commands.sh /execute-jenkins-cli-commands.sh
 
 # XML templates
 ADD user-template.xml /user-template.xml
+
+
+# Script for PW encryption
+ADD pwencrypt /usr/bin/pwencrypt
 
 
 # Port 50000 will be used by jenkins slave

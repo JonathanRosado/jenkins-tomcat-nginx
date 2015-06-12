@@ -87,8 +87,8 @@ Will have this effect on the Jenkins configuration file
   .
   <authorizationStrategy .../>
   <securityRealm class="hudson.security.HudsonPrivateSecurityRealm">
-    <enableCaptcha>true</enableCaptcha>
-    <disableSignup>false</disableSignup>
+    <enableCaptcha>false</enableCaptcha>
+    <disableSignup>true</disableSignup>
   </securityRealm>
   <disableRememberMe>...</disableRememberMe>
   .
@@ -278,10 +278,31 @@ Specify a list of users in the config.yml in the format <USERNAME:PASSWORD>. Thi
 .
 ---
 users:
-  - 'user1:password1'
-  - 'user2:password2'
-  - 'user3:password3'
-  - 'user4:password4'
+  unhashed:
+    - 'user1:password1'
+    - 'user2:password2'
+    - 'user3:password3'
+    - 'user4:password4'
+```
+
+If security is a concern, you can provide a hashed password instead.
+
+```bash
+sudo docker run -ti --entrypoint="bash" verigreen/jenkins-tomcat-nginx pwencrypt
+# Program will prompt for password
+password: MY-PASSWORD
+# Copy this into your config.yml
+8e902968fe313800b53d00e89489ad6106c69f484a5d8a1589cf9f39a0d0e91b
+```
+
+```yaml
+.
+.
+.
+---
+users:
+  hashed: # Note the change from unhashed to hashed
+    - 'user1:8e902968fe313800b53d00e89489ad6106c69f484a5d8a1589cf9f39a0d0e91b'
 ```
 
 ###Running commands in the Jenkins CLI

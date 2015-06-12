@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # Programmically Enable Jobs in Jenkins Jobs DSL Plugin
 # =====================================================
 #
@@ -49,7 +51,7 @@ do
 			supervisorctl restart all:jenkins
 			check_groovy_dsl_job
 		else
-			if [[ $(curl -s --head --request GET http://localhost:8080/job/groovy-dsl-job/build \
+			if [[ $(curl -s --head --request GET http://localhost:8080/job/groovy-dsl-job/build?token=khDWRWANOPMLKJNbVTcRCreXerTYrcTUvtuCREYBuYYfvUYTC \
 				    | grep "201 Created" ) ]]; then
 				echo "GRO: Seed has been built"
 

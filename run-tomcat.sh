@@ -119,13 +119,25 @@ function take_care_of_special_cases {
 
 		return 1;
 
-	elif [[ "${NODE_NAME}" == "users" ]]; then
+	elif [[ "$NODE_PATH" == "/users" ]] && [[ "${NODE_NAME}" == "hashed" ]]; then
 
 		LIST=$(python -c "for i in ${NODE_VALUE}: print i;")
 
 		IFS=$'\n'
 		for i in $LIST; do
-			echo $i >> /users.txt
+			echo "${i}:hashed" >> /users.txt
+		done
+		unset IFS
+
+		return 1;
+
+	elif [[ "$NODE_PATH" == "/users" ]] && [[ "${NODE_NAME}" == "unhashed" ]]; then
+
+		LIST=$(python -c "for i in ${NODE_VALUE}: print i;")
+
+		IFS=$'\n'
+		for i in $LIST; do
+			echo "${i}:unhashed" >> /users.txt
 		done
 		unset IFS
 
@@ -163,6 +175,28 @@ function take_care_of_special_cases {
 	fi
 }
 
+function build_path {
+	NODE_PATH=$1
+
+	INCREMENTAL_PATH=''
+
+	IFS=$'/'
+	for i in $NODE_PATH; do
+		if [[ ! -z $i ]] && [[ "$i" != "attributes" ]]; then
+			NODE="$i"
+			cPATH="${INCREMENTAL_PATH}"
+    		INCREMENTAL_PATH="${cPATH}/${NODE}"
+    		COUNT=$(xmlstarlet sel -t -v "count(${INCREMENTAL_PATH})" /config.xml)
+    		echo "INCREMENTAL_PATH: ${INCREMENTAL_PATH}, cPATH: ${cPATH}, NODE: ${NODE}"
+    		[[ $COUNT -eq 0 ]] && \
+    			echo -e "$(xmlstarlet ed -s "$cPATH" -t elem -n "$NODE" -v "" /config.xml)" > /config.xml
+		fi
+	done
+	unset IFS
+
+	return 0
+}
+
 # Parse and dispatch config.yml
 if [[ -f /config.yml ]]; then 
 	echo -e "RUN: config.yml detected."
@@ -180,6 +214,7 @@ if [[ -f /config.yml ]]; then
 		NODE_VALUE=$(echo $i | awk -F'|' '{print $2}');
 
 		if take_care_of_special_cases "$NODE_PATH" "$NODE_NAME" "$NODE_VALUE"; then
+			build_path "${NODE_PATH}"
 			echo -e "$(xmlstarlet ed -s "$NODE_PATH" -t elem -n "$NODE_NAME" -v "$NODE_VALUE" /config.xml)" > /config.xml
 		fi
 	done
@@ -244,6 +279,7 @@ cp -f /config.xml /var/jenkins_home/config.xml
 	do 
 		USERNAME=$(echo $i | awk -F':' '{print $1}'); 
 		PASSWORD=$(echo $i | awk -F':' '{print $2}');
+		SECURITY=$(echo $i | awk -F':' '{print $3}');
 
 		echo "RUN: Making account for $USERNAME"
 
@@ -254,13 +290,14 @@ cp -f /config.xml /var/jenkins_home/config.xml
 		# Copy user xml template
 		cp -f /user-template.xml /var/jenkins_home/users/$USERNAME/config.xml
 
-		# Convert password to hash (and add some embedded salt)
-		PASSWORD=$(echo -n "$PASSWORD{oxulLC}" | sha256sum | awk '{print $1}')
+		# If password is not hashed, convert password to hash
+		[[ "$SECURITY" == "unhashed" ]] && \
+			PASSWORD=$(echo -n "$PASSWORD{oxulLC}" | sha256sum | awk '{print $1}')
 
 		# Replace dummy values in template
 		echo -e "$(xmlstarlet ed -u '/user/fullName' -v "$USERNAME" /var/jenkins_home/users/${USERNAME}/config.xml)" > /var/jenkins_home/users/$USERNAME/config.xml
 		echo -e "$(xmlstarlet ed -u '/user/properties/hudson.security.HudsonPrivateSecurityRealm_-Details/passwordHash' -v "oxulLC:${PASSWORD}" /var/jenkins_home/users/${USERNAME}/config.xml)" \
-			> /var/jenkins_home/users/$USERNAME/config.xml
+			> /var/jenkins_home/users/$USERNAME/config.xml 
 
 	done < /users.txt
 
