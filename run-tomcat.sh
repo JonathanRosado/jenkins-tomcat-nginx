@@ -9,7 +9,7 @@ ALIAS["ldap-authentication"]="['class=hudson.security.LDAPSecurityRealm','plugin
 ALIAS["login-authorization"]="['class=hudson.security.FullControlOnceLoggedInAuthorizationStrategy']"
 ALIAS["database-authentication"]="['class=hudson.security.HudsonPrivateSecurityRealm']"
 ALIAS["matrix-authorization"]="['class=hudson.security.ProjectMatrixAuthorizationStrategy']"
-ALIAS["unsecured-authorization"]="['class=hudson.security.AuthorizationStrategy$Unsecured']"
+ALIAS["unsecured-authorization"]="['class=hudson.security.AuthorizationStrategy\$Unsecured']"
 
 ALIAS["credentials-create"]="com.cloudbees.plugins.credentials.CredentialsProvider.Create"
 ALIAS["credentials-delete"]="com.cloudbees.plugins.credentials.CredentialsProvider.Delete"
@@ -198,17 +198,17 @@ function build_path {
 }
 
 # Parse and dispatch config.yml
-if [[ -f /config.yml ]]; then 
+if [[ -f /config.yml ]]; then
 	echo -e "RUN: config.yml detected."
 
-	echo -e "$(xmlstarlet ed -d "/hudson/securityRealm" /config.xml)" > /config.xml 
+	echo -e "$(xmlstarlet ed -d "/hudson/securityRealm" /config.xml)" > /config.xml
 	echo -e "$(xmlstarlet ed -i "/hudson/disableRememberMe" -t elem -n securityRealm -v "" /config.xml)" > /config.xml
 
-	echo -e "$(xmlstarlet ed -d "/hudson/authorizationStrategy" /config.xml)" > /config.xml 
+	echo -e "$(xmlstarlet ed -d "/hudson/authorizationStrategy" /config.xml)" > /config.xml
 	echo -e "$(xmlstarlet ed -a "/hudson/useSecurity" -t elem -n authorizationStrategy -v "" /config.xml)" > /config.xml
 
 	IFS=$'\n'
-	for i in $(python configparser.py config.yml); do 
+	for i in $(python configparser.py config.yml); do
 		NODE_PATH=$(echo $i | awk -F'|' '{print $1}' | awk -F'/' -v OFS='/' '{$NF="" ;print $0}' | sed 's/.\{1\}$//');
 		NODE_NAME=$(echo $i | awk -F'|' '{print $1}' | awk -F'/' '{print $(NF)}');
 		NODE_VALUE=$(echo $i | awk -F'|' '{print $2}');
@@ -246,7 +246,8 @@ fi
 	ln -s /jenkins_home
 
 # Copy root config and users/ to jenkins_home
-cp -f /config.xml /var/jenkins_home/config.xml
+[[ -f /config.yml ]] && \
+	cp -f /config.xml /var/jenkins_home/config.xml
 
 # If SSLcerts.txt was mounted to the root folder,
 # read the file line by line, parsing each line
@@ -254,9 +255,9 @@ cp -f /config.xml /var/jenkins_home/config.xml
 # found in the Cert-Install-Tool/ directory at root
 [[ -f /SSLcerts.txt ]] && \
 	cd /Cert-Install-Tool && \
-	while read i; 
-	do 
-		SERVER_NAME=$(echo $i | awk -F':' '{print $1}'); 
+	while read i;
+	do
+		SERVER_NAME=$(echo $i | awk -F':' '{print $1}');
 		PORT_NUMBER=$(echo $i | awk -F':' '{print $2}');
 
 		echo "RUN: Downloading certificate $CERT_NUMBER for $SERVER_NAME:$PORT_NUMBER"
@@ -268,16 +269,16 @@ cp -f /config.xml /var/jenkins_home/config.xml
 		-noprompt -alias "${SERVER_NAME}cert" -file /tmp/$SERVER_NAME.crt
 
 	done < /SSLcerts.txt
-		
+
 
 # If users.txt was mounted,
 # loop through the file and
 # create each user
 [[ -f /users.txt ]] && \
 	echo -e "\n" >> /users.txt && \
-	while read i; 
-	do 
-		USERNAME=$(echo $i | awk -F':' '{print $1}'); 
+	while read i;
+	do
+		USERNAME=$(echo $i | awk -F':' '{print $1}');
 		PASSWORD=$(echo $i | awk -F':' '{print $2}');
 		SECURITY=$(echo $i | awk -F':' '{print $3}');
 
@@ -297,15 +298,15 @@ cp -f /config.xml /var/jenkins_home/config.xml
 		# Replace dummy values in template
 		echo -e "$(xmlstarlet ed -u '/user/fullName' -v "$USERNAME" /var/jenkins_home/users/${USERNAME}/config.xml)" > /var/jenkins_home/users/$USERNAME/config.xml
 		echo -e "$(xmlstarlet ed -u '/user/properties/hudson.security.HudsonPrivateSecurityRealm_-Details/passwordHash' -v "oxulLC:${PASSWORD}" /var/jenkins_home/users/${USERNAME}/config.xml)" \
-			> /var/jenkins_home/users/$USERNAME/config.xml 
+			> /var/jenkins_home/users/$USERNAME/config.xml
 
 	done < /users.txt
 
 
 # If $ADMIN_PASSWORD was defined,
 # create a quick admin account
-if [[ ! -z $ADMIN_PASSWORD ]]; then 
-	USERNAME="admin" 
+if [[ ! -z $ADMIN_PASSWORD ]]; then
+	USERNAME="admin"
 	PASSWORD=$ADMIN_PASSWORD
 
 	echo "RUN: Making account for $USERNAME"
@@ -340,11 +341,11 @@ cp -f -R /var/tmp/groovy-dsl-job/ /var/jenkins_home/jobs/groovy-dsl-job/
 
 PLUGINS_INSTALLED="true"
 
-for i in $( cat /usr/share/jenkins/plugins.txt | awk -F':' '{print $1}' ); 
-do 
-    if [[ ! $( ls /tomcat/webapps/ROOT/WEB-INF/plugins | grep "${i}.hpi" ) ]]; then 
+for i in $( cat /usr/share/jenkins/plugins.txt | awk -F':' '{print $1}' );
+do
+    if [[ ! $( ls /tomcat/webapps/ROOT/WEB-INF/plugins | grep "${i}.hpi" ) ]]; then
         PLUGINS_INSTALLED="false"
-    fi 
+    fi
 done
 
 if [[ $PLUGINS_INSTALLED == "false" ]]; then
