@@ -262,7 +262,7 @@ fi
 
 		echo "RUN: Downloading certificate for $ADDRESS:$PORT"
 
-		echo -n | openssl s_client -connect $ADDRESS:$PORT | \
+		echo -n | openssl s_client -showcerts -connect $ADDRESS:$PORT | \
 		sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > /tmp/$ADDRESS.crt
 
 		$JAVA_HOME/bin/keytool -import -alias $ADDRESS-$PORT -keystore $JAVA_HOME/jre/lib/security/cacerts -file /tmp/$ADDRESS.$PORT.cert
