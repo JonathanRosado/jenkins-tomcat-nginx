@@ -31,7 +31,8 @@ ENV JENKINS_VERSION=1.596.2 \
 	JENKINS_UC=https://updates.jenkins-ci.org \
 	TOMCAT_MAJOR_VERSION=7 \
 	TOMCAT_MINOR_VERSION=7.0.55 \
-	CATALINA_HOME=/tomcat
+	CATALINA_HOME=/tomcat \
+        JAVA_HOME='/usr/lib/jvm/java-7-openjdk-amd64'
 
 
 # Install the supervisor process management tool to run both nginx and jetty
