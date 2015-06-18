@@ -257,16 +257,15 @@ fi
 	cd /Cert-Install-Tool && \
 	while read i;
 	do
-		SERVER_NAME=$(echo $i | awk -F':' '{print $1}');
-		PORT_NUMBER=$(echo $i | awk -F':' '{print $2}');
+		ADDRESS=$(echo $i | awk -F':' '{print $1}');
+		PORT=$(echo $i | awk -F':' '{print $2}');
 
-		echo "RUN: Downloading certificate $CERT_NUMBER for $SERVER_NAME:$PORT_NUMBER"
+		echo "RUN: Downloading certificate for $ADDRESS:$PORT"
 
-		echo -n | openssl s_client -connect $SERVER_NAME:$PORT_NUMBER | \
-		sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > /tmp/$SERVER_NAME.crt
+		echo -n | openssl s_client -connect $ADDRESS:$PORT | \
+		sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > /tmp/$ADDRESS.crt
 
-		keytool -import -trustcacerts -keystore /usr/lib/jvm/java-7-openjdk-amd64/jre/lib/security/cacerts -storepass changeit \
-		-noprompt -alias "${SERVER_NAME}cert" -file /tmp/$SERVER_NAME.crt
+		$JAVA_HOME/bin/keytool -import -alias $ADDRESS-$PORT -keystore $JAVA_HOME/jre/lib/security/cacerts -file /tmp/$ADDRESS.$PORT.cert
 
 	done < /SSLcerts.txt
 
