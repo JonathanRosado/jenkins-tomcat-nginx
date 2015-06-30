@@ -56,9 +56,9 @@ do
 				echo "GRO: Seed has been built"
 
 				# Wait for the seed job to build
-				sleep 20
+				sleep 50
 
-				curl -s --head --request POST http://localhost:8080/job/groovy-dsl-job/doDelete
+				#curl -s --head --request POST http://localhost:8080/job/groovy-dsl-job/doDelete
 				exit 0
 			fi
 		fi

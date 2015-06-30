@@ -201,11 +201,7 @@ function build_path {
 if [[ -f /config.yml ]]; then
 	echo -e "RUN: config.yml detected."
 
-	echo -e "$(xmlstarlet ed -d "/hudson/securityRealm" /config.xml)" > /config.xml
-	echo -e "$(xmlstarlet ed -i "/hudson/disableRememberMe" -t elem -n securityRealm -v "" /config.xml)" > /config.xml
-
-	echo -e "$(xmlstarlet ed -d "/hudson/authorizationStrategy" /config.xml)" > /config.xml
-	echo -e "$(xmlstarlet ed -a "/hudson/useSecurity" -t elem -n authorizationStrategy -v "" /config.xml)" > /config.xml
+	echo -e '<?xml version="1.0" encoding="UTF-8"?>\n<hudson>\n\n</hudson>' > /config.xml
 
 	IFS=$'\n'
 	for i in $(python configparser.py config.yml); do
@@ -213,12 +209,15 @@ if [[ -f /config.yml ]]; then
 		NODE_NAME=$(echo $i | awk -F'|' '{print $1}' | awk -F'/' '{print $(NF)}');
 		NODE_VALUE=$(echo $i | awk -F'|' '{print $2}');
 
-		if take_care_of_special_cases "$NODE_PATH" "$NODE_NAME" "$NODE_VALUE"; then
-			build_path "${NODE_PATH}"
+		if build_path "${NODE_PATH}" && take_care_of_special_cases "$NODE_PATH" "$NODE_NAME" "$NODE_VALUE"; then
 			echo -e "$(xmlstarlet ed -s "$NODE_PATH" -t elem -n "$NODE_NAME" -v "$NODE_VALUE" /config.xml)" > /config.xml
 		fi
 	done
 	unset IFS
+
+	# Could use the 'g' option to match multiple instances in a line
+	# Workaroud for editing a file with sed. See http://stackoverflow.com/questions/2585438/redirect-output-from-sed-s-c-d-myfile-to-myfile
+	sed -r 's:(<.*)-[1-9]*(>.*):\1\2:' /config.xml |  sed -r 's:(<.*)-[1-9]*(>.*):\1\2:' > /temp_file && mv /temp_file /config.xml
 fi
 
 # Dispatch files to the appropriate directory
@@ -351,7 +350,7 @@ if [[ $PLUGINS_INSTALLED == "false" ]]; then
 	# Load the plugins before running Catalina
 	# Do not load plugins if they've already been loaded
 	# (This can happen when Jenkins needs to restart)
-	/bin/bash /usr/local/bin/plugins.sh /usr/share/jenkins/plugins.txt
+	source /usr/local/bin/plugins.sh /usr/share/jenkins/plugins.txt
 fi
 
 exec ${CATALINA_HOME}/bin/catalina.sh run

@@ -22,14 +22,51 @@ Where `config.yml` represents the configuration for each container instance
 # Use Jenkins' own user database #
 ##################################
 hudson:
-  securityRealm:
-    attributes: 'database-authentication'
-    disableSignup: 'true'
-    enableCaptcha: 'false'
----
-hudson:
+  disabledAdministrativeMonitors: ''
+  version: '1.596.2'
+  numExecutors: '2'
+  mode: 'NORMAL'
+  useSecurity: 'true'
   authorizationStrategy:
-    attributes: 'login-authorization'
+    attributes:
+      - 'class=hudson.security.AuthorizationStrategy$Unsecured'
+  securityRealm:
+    attributes:
+      - 'class=hudson.security.SecurityRealm$None'
+  disableRememberMe: 'false'
+  projectNamingStrategy:
+    attributes:
+      - 'class=jenkins.model.ProjectNamingStrategy$DefaultProjectNamingStrategy'
+  workspaceDir: '${ITEM_ROOTDIR}/workspace'
+  buildsDir: '${ITEM_ROOTDIR}/builds'
+  jdks: ''
+  viewsTabBar:
+    attributes:
+      - 'class=hudson.views.DefaultViewsTabBar'
+  myViewsTabBar:
+    attributes:
+      - 'class="hudson.views.DefaultMyViewsTabBar
+  clouds: ''
+  slaves: ''
+  quietPeriod: '5'
+  scmCheckoutRetryCount: '0'
+  views:
+    hudson.model.AllView:
+      owner:
+        attributes:
+          - 'class=hudson'
+          - 'reference=../../..' 
+      name: 'All'
+      filterExecutors: 'false'
+      filterQueue: 'false'
+      properties:
+        attributes:
+          - 'class=hudson.model.View$PropertyList'
+  primaryView: 'All'
+  slaveAgentPort: '0'
+  label: ''
+  nodeProperties: ''
+  globalNodeProperties: ''
 ---
 users:
   - 'user1:password1'
@@ -66,6 +103,14 @@ If you already have a jenkins instance you can migrate your existing data and co
 1. **Existing jobs**: the jobs that you want to reuse and persist with this container should be located in your *host's* `/path/to/jenkins_home/jobs`. The jenkins running within the container will look for them in `/var/jenkins_home/jobs` during startup.
 
 2. **Existing plugins**: the plugins that you want to reuse and persist with this container should be located in your *host's* `/path/to/jenkins_home/plugins`. The jenkins running within the container will look for them in `/var/jenkins_home/plugins`.
+
+```bash
+docker run \
+  -ti \
+  -v `pwd`/JOB_DIRECTORY:/JOB_DIRECTORY \
+  --entrypoint="bash" \
+  verigreen/jenkins-tomcat-nginx -c "python xml2jobDSL.py JOB_DIRECTORY" > myjob.groovy
+```
 
 ### The config.yml
 

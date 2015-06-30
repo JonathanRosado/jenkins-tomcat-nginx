@@ -22,7 +22,6 @@
 FROM nginx:1.7.12
 MAINTAINER Jonathan Rosado <jonathan.rosado-lugo@hp.com>
 
-
 # Version for jenkins
 # Update center for jenkins
 # Versions for tomcat
@@ -38,6 +37,7 @@ ENV JENKINS_VERSION=1.596.2 \
 # Install the supervisor process management tool to run both nginx and jetty
 # Install the necessary packages to download and install Tomcat and Jenkins
 # Clean up packages
+# TODO: openjdk-7-jre endpoints seem to be unreliable. apt-get fails to get packages, causing image build to fail.
 RUN apt-get update && apt-get install -y -f git 
 RUN apt-get install -y -f wget 
 RUN apt-get install -y -f curl 
@@ -45,7 +45,8 @@ RUN apt-get install -y -f supervisor
 RUN apt-get install -y -f openjdk-7-jre
 RUN apt-get install -y -f fastjar
 RUN apt-get install -y -f ca-certificates 
-RUN apt-get install -y -f xmlstarlet 
+RUN apt-get install -y -f xmlstarlet
+RUN apt-get install -y -f python-lxml
 RUN wget -q https://archive.apache.org/dist/tomcat/tomcat-${TOMCAT_MAJOR_VERSION}/v${TOMCAT_MINOR_VERSION}/bin/apache-tomcat-${TOMCAT_MINOR_VERSION}.tar.gz
 RUN wget -qO- https://archive.apache.org/dist/tomcat/tomcat-${TOMCAT_MAJOR_VERSION}/v${TOMCAT_MINOR_VERSION}/bin/apache-tomcat-${TOMCAT_MINOR_VERSION}.tar.gz.md5 | md5sum -c - 
 RUN curl --silent --show-error --retry 5 https://bootstrap.pypa.io/get-pip.py | python2.7 
@@ -67,6 +68,8 @@ ADD run-tomcat.sh /run.sh
 # General YAML parser
 ADD configparser.py /configparser.py
 
+# Job migration tool
+ADD xml2jobDSL.py /xml2jobDSL.py
 
 # Set the home folder for jenkins
 ENV JENKINS_HOME /var/jenkins_home
