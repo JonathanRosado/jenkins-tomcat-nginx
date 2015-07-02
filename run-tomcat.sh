@@ -217,7 +217,7 @@ if [[ -f /config.yml ]]; then
 
 	# Could use the 'g' option to match multiple instances in a line
 	# Workaroud for editing a file with sed. See http://stackoverflow.com/questions/2585438/redirect-output-from-sed-s-c-d-myfile-to-myfile
-	sed -r 's:(<.*)-[1-9]*(>.*):\1\2:' /config.xml |  sed -r 's:(<.*)-[1-9]*(>.*):\1\2:' > /temp_file && mv /temp_file /config.xml
+	sed -r 's:(<.*)-[1-9]*( *| .*)?(>.*):\1\3:' /config.xml |  sed -r 's:(<.*)-[1-9]*( *| .*)?(>.*):\1\3:' > /temp_file && mv /temp_file /config.xml
 fi
 
 # Dispatch files to the appropriate directory

@@ -23,7 +23,7 @@ Where `config.yml` represents the configuration for each container instance
 ##################################
 hudson:
   disabledAdministrativeMonitors: ''
-  version: '1.596.2'
+  version: '1.0'
   numExecutors: '2'
   mode: 'NORMAL'
   useSecurity: 'true'
@@ -39,29 +39,31 @@ hudson:
       - 'class=jenkins.model.ProjectNamingStrategy$DefaultProjectNamingStrategy'
   workspaceDir: '${ITEM_ROOTDIR}/workspace'
   buildsDir: '${ITEM_ROOTDIR}/builds'
+  markupFormatter:
+    attributes:
+      - 'class=hudson.markup.EscapedMarkupFormatter'
   jdks: ''
   viewsTabBar:
     attributes:
       - 'class=hudson.views.DefaultViewsTabBar'
   myViewsTabBar:
     attributes:
-      - 'class="hudson.views.DefaultMyViewsTabBar
+      - 'class=hudson.views.DefaultMyViewsTabBar'
   clouds: ''
   slaves: ''
-  quietPeriod: '5'
   scmCheckoutRetryCount: '0'
   views:
     hudson.model.AllView:
       owner:
         attributes:
           - 'class=hudson'
-          - 'reference=../../..' 
+          - 'reference=../../..'
       name: 'All'
       filterExecutors: 'false'
       filterQueue: 'false'
       properties:
         attributes:
-          - 'class=hudson.model.View$PropertyList'
+          - 'class="hudson.model.View$PropertyList'
   primaryView: 'All'
   slaveAgentPort: '0'
   label: ''
@@ -73,7 +75,7 @@ users:
   - 'user2:password2'
 ```
 
-Then, from your host, you may access the jenkins UI at `localhost:$PORT_FOR_JENKINS`. 
+Then, from your host, you may access the jenkins UI at `localhost:$PORT_FOR_JENKINS`.
 
 The `-p $PORT_FOR_JENKINS:8081` is *required* to map a host port to the port where jenkins is exposed in the container. The `-v path/to/jenkins_home:/var/jenkins_home` is *recommended* if you want to persist any configuration and data that happens during the execution of jenkins in that container instance. The `-v path/to/config.yml:/config.yml` is how each Jenkins instance is customized. The `-it` command runs the container interactively. To run the container in *detached* mode replace the `-it` option with `-d` or if it is already running press `CTRL`+`P` followed by `CTRL`+`Q` and it will detach.
 
@@ -174,7 +176,7 @@ certificates: # 4. List of certificates 'DOMAIN:PORT'
   - 'ldap.example1.net:636'
   - 'ldap.example2.com:636'
 ---
-commands: # 5. List of commands 
+commands: # 5. List of commands
   - "echo 'jenkins.model.Jenkins.instance.securityRealm.createAccount(\"admin\", \"password\")'"
 ```
 
@@ -218,9 +220,9 @@ hudson:
     attributes: 'matrix-authorization'
     permissions:
       - 'overall-administer:user1'
-      - 'overall-configure-update-center:user1' 
+      - 'overall-configure-update-center:user1'
       - 'overall-read:user1'
-      - 'overall-run-scripts:user1' 
+      - 'overall-run-scripts:user1'
       - 'overall-upload-plugins:user1'
 ---
 users:
@@ -466,9 +468,9 @@ To make Jenkins authenticate via LDAP, add the following xml to your root `confi
 ```
 The values provided in the snippet should serve as a clue as to how to format your own.
 
-The value for `<managerPassword>` is base64 encoded. This is how Jenkins stores passwords and it is how it'll read them. 
+The value for `<managerPassword>` is base64 encoded. This is how Jenkins stores passwords and it is how it'll read them.
 
-Open up a terminal and run the following command to get the base64 version of your password 
+Open up a terminal and run the following command to get the base64 version of your password
 `echo <MYPASSWORD> | base64 | awk -F'=' '{print $1}'`
 
 Replace `<MYPASSWORD>` with your own and put the result of the command in the `<managerPassword>` node.
@@ -477,7 +479,7 @@ Replace `<MYPASSWORD>` with your own and put the result of the command in the `<
 >`echo <ENCODED_PASSWORD> | base64 --decode`
 >You might receive a warning if your password's base64 encoding is not divisible by 3 bytes. You can go ahead and ignore this.
 
-Once you're finished with the root config file. Go ahead and restart Jenkins by running 
+Once you're finished with the root config file. Go ahead and restart Jenkins by running
 `sudo docker exec <CONTAINERNAME> /bin/bash -c "supervisorctl restart all:jenkins"`
 If you're already inside the container, you can achieve the same running these commands
 `${CATALINA_HOME}/bin/catalina.sh stop`
@@ -486,11 +488,11 @@ If you're already inside the container, you can achieve the same running these c
 You should now have Jenkins configured for LDAP authentication.
 
 > NOTE: If you get an SSL handshake exception while configuring LDAP in Jenkins, you will probably have to add the SSL certificate to Java's keystore.
-> 
+>
 > You can do the following:  
-> 
+>
 > 1) Access the container via `sudo docker exec -ti <CONTAINER_NAME> /bin/bash`  
-> 2) Download your SSL certificate. If you have the server running, you can download it directly 
+> 2) Download your SSL certificate. If you have the server running, you can download it directly
 `echo -n | openssl s_client -connect <HOST>:<PORT> | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > /tmp/<SERVERNAME>.crt`
 >3) Use the keytool to add the SSL certificate to Java's keystore (keystore password = `changeit`)
 `keytool -import -trustcacerts -alias <HOST_NAME> -file /tmp/<SERVERNAME>.crt -keystore ${JAVA_HOME}/jre/lib/security/cacerts`
@@ -504,11 +506,11 @@ You should now have Jenkins configured for LDAP authentication.
 >ldap.example2.com:636
 >ldap.example3.com
 >```
->`-v path/to/SSLcerts.txt:/SSLcerts.txt` 
+>`-v path/to/SSLcerts.txt:/SSLcerts.txt`
 >
 >Finally, to check if everything works, access the container and run this command
 >`cd Cert-Install-Tool/ && java SSLPoke ldap.example.com 443`
->This will send a byte to your LDAP server and verify confidentiality. 
+>This will send a byte to your LDAP server and verify confidentiality.
 >
 >If you're still getting a handshake exception, you can try downloading a different certificate (assuming the server yields multiple SSL certificates).
 >Just append whichever one you want to download to the server:port entry.
@@ -519,7 +521,7 @@ You should now have Jenkins configured for LDAP authentication.
 >```
 
 
-####Jenkins’ own user database 
+####Jenkins’ own user database
 ```xml
 ...
 <mode>...</mode>
@@ -531,7 +533,7 @@ You should now have Jenkins configured for LDAP authentication.
 </securityRealm>
 ...
 ```
-####Unix user/group database 
+####Unix user/group database
 ```xml
 ...
 <mode>...</mode>
