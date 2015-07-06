@@ -244,9 +244,6 @@ fi
 	rm -r jenkins_home && \
 	ln -s /jenkins_home
 
-# Copy root config and users/ to jenkins_home
-[[ -f /config.yml ]] && \
-	cp -f /config.xml /var/jenkins_home/config.xml
 
 # If SSLcerts.txt was mounted to the root folder,
 # read the file line by line, parsing each line
