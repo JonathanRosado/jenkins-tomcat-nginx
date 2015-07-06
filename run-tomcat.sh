@@ -74,9 +74,9 @@ function take_care_of_special_cases {
 		for i in $LIST; do
 			ATTR_NAME=$(echo $i | awk -F'=' '{print $1}')
 			ATTR_VALUE=$(echo $i | awk -F'=' '{print $2}')
-			OPERATION="$(xmlstarlet ed -i "$NODE_PATH" -t attr -n $ATTR_NAME -v $ATTR_VALUE /config.xml)"
+			OPERATION="$(xmlstarlet ed -i "$NODE_PATH" -t attr -n $ATTR_NAME -v $ATTR_VALUE /var/jenkins_home/config.xml)"
 			if [[ -n $OPERATION ]]; then
-				echo "$OPERATION" > /config.xml
+				echo "$OPERATION" > /var/jenkins_home/config.xml
 			fi
 		done
 		unset IFS
@@ -147,7 +147,7 @@ function take_care_of_special_cases {
 
 		NODE_VALUE=$(echo $NODE_VALUE | base64 | awk -F'=' '{print $1}')
 
-		echo -e "$(xmlstarlet ed -s "$NODE_PATH" -t elem -n "$NODE_NAME" -v "$NODE_VALUE" /config.xml)" > /config.xml
+		echo -e "$(xmlstarlet ed -s "$NODE_PATH" -t elem -n "$NODE_NAME" -v "$NODE_VALUE" /var/jenkins_home/config.xml)" > /var/jenkins_home/config.xml
 
 		return 1;
 
@@ -164,7 +164,7 @@ function take_care_of_special_cases {
 				i="${ALIAS[$PERMISSION]}:${USER}"
 			fi
 
-		    echo -e "$(xmlstarlet ed -s "$NODE_PATH" -t elem -n "permission" -v "$i" /config.xml)" > /config.xml
+		    echo -e "$(xmlstarlet ed -s "$NODE_PATH" -t elem -n "permission" -v "$i" /var/jenkins_home/config.xml)" > /var/jenkins_home/config.xml
 		done
 		unset IFS
 
@@ -186,10 +186,10 @@ function build_path {
 			NODE="$i"
 			cPATH="${INCREMENTAL_PATH}"
     		INCREMENTAL_PATH="${cPATH}/${NODE}"
-    		COUNT=$(xmlstarlet sel -t -v "count(${INCREMENTAL_PATH})" /config.xml)
+    		COUNT=$(xmlstarlet sel -t -v "count(${INCREMENTAL_PATH})" /var/jenkins_home/config.xml)
     		echo "INCREMENTAL_PATH: ${INCREMENTAL_PATH}, cPATH: ${cPATH}, NODE: ${NODE}"
     		[[ $COUNT -eq 0 ]] && \
-    			echo -e "$(xmlstarlet ed -s "$cPATH" -t elem -n "$NODE" -v "" /config.xml)" > /config.xml
+    			echo -e "$(xmlstarlet ed -s "$cPATH" -t elem -n "$NODE" -v "" /var/jenkins_home/config.xml)" > /var/jenkins_home/config.xml
 		fi
 	done
 	unset IFS
@@ -201,7 +201,7 @@ function build_path {
 if [[ -f /config.yml ]]; then
 	echo -e "RUN: config.yml detected."
 
-	echo -e '<?xml version="1.0" encoding="UTF-8"?>\n<hudson>\n\n</hudson>' > /config.xml
+	echo -e '<?xml version="1.0" encoding="UTF-8"?>\n<hudson>\n\n</hudson>' > /var/jenkins_home/config.xml
 
 	IFS=$'\n'
 	for i in $(python configparser.py config.yml); do
@@ -210,14 +210,14 @@ if [[ -f /config.yml ]]; then
 		NODE_VALUE=$(echo $i | awk -F'|' '{print $2}');
 
 		if build_path "${NODE_PATH}" && take_care_of_special_cases "$NODE_PATH" "$NODE_NAME" "$NODE_VALUE"; then
-			echo -e "$(xmlstarlet ed -s "$NODE_PATH" -t elem -n "$NODE_NAME" -v "$NODE_VALUE" /config.xml)" > /config.xml
+			echo -e "$(xmlstarlet ed -s "$NODE_PATH" -t elem -n "$NODE_NAME" -v "$NODE_VALUE" /var/jenkins_home/config.xml)" > /var/jenkins_home/config.xml
 		fi
 	done
 	unset IFS
 
 	# Could use the 'g' option to match multiple instances in a line
 	# Workaroud for editing a file with sed. See http://stackoverflow.com/questions/2585438/redirect-output-from-sed-s-c-d-myfile-to-myfile
-	sed -r 's:(<.*)-[1-9]*( *| .*)?(>.*):\1\2\3:' /config.xml |  sed -r 's:(<.*)-[1-9]*( *| .*)?(>.*):\1\2\3:' > /temp_file && mv /temp_file /config.xml
+	sed -r 's:(<.*)-[1-9]*( *| .*)?(>.*):\1\2\3:' /var/jenkins_home/config.xml |  sed -r 's:(<.*)-[1-9]*( *| .*)?(>.*):\1\2\3:' > /temp_file && mv /temp_file /var/jenkins_home/config.xml
 fi
 
 # Dispatch files to the appropriate directory
