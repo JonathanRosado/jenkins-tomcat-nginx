@@ -5,18 +5,37 @@ A Jenkins docker image running on tomcat and nginx with a focus on enabling user
 
 ## Usage
 
-To run this jenkins container with you may run the following command:
+To run this jenkins container you may run the following command:
 
 ```bash
 sudo docker run \
     -it \
     -p $PORT_FOR_JENKINS:8081 \
-    -v path/to/jenkins_home:/jenkins_home \
     -v path/to/config.yml:/config.yml
+    -v path/to/jenkins_home:/jenkins_home
     verigreen/jenkins-tomcat-nginx
 ```
 
 Where `config.yml` represents the configuration for each container instance
+
+If you're behind a proxy, include the appropriate environment variables.
+
+```bash
+sudo docker run \
+    -e http_proxy="http://my-proxy.myserver.com:8080/" \
+    -e https_proxy="http://my-proxy.myserver.com:8080/" \
+    -e HTTP_PROXY="http://my-proxy.myserver.com:8080/" \
+    -e HTTPS_PROXY="http://my-proxy.myserver.com:8080/" \ 
+    -e no_proxy="127.0.0.1, localhost" \
+    -it \
+    -p $PORT_FOR_JENKINS:8081 \
+    -v path/to/config.yml:/config.yml
+    -v path/to/jenkins_home:/jenkins_home
+    verigreen/jenkins-tomcat-nginx
+```
+
+Here is an example of a simple Jenkins setup.
+
 ```yaml
 ##################################
 # Use Jenkins' own user database #
@@ -29,26 +48,26 @@ hudson:
   useSecurity: 'true'
   authorizationStrategy:
     attributes:
-      - 'class=hudson.security.AuthorizationStrategy$Unsecured'
+    - 'class=hudson.security.AuthorizationStrategy$Unsecured'
   securityRealm:
     attributes:
-      - 'class=hudson.security.SecurityRealm$None'
+    - 'class=hudson.security.SecurityRealm$None'
   disableRememberMe: 'false'
   projectNamingStrategy:
     attributes:
-      - 'class=jenkins.model.ProjectNamingStrategy$DefaultProjectNamingStrategy'
+    - 'class=jenkins.model.ProjectNamingStrategy$DefaultProjectNamingStrategy'
   workspaceDir: '${ITEM_ROOTDIR}/workspace'
   buildsDir: '${ITEM_ROOTDIR}/builds'
   markupFormatter:
     attributes:
-      - 'class=hudson.markup.EscapedMarkupFormatter'
+    - 'class=hudson.markup.EscapedMarkupFormatter'
   jdks: ''
   viewsTabBar:
     attributes:
-      - 'class=hudson.views.DefaultViewsTabBar'
+    - 'class=hudson.views.DefaultViewsTabBar'
   myViewsTabBar:
     attributes:
-      - 'class=hudson.views.DefaultMyViewsTabBar'
+    - 'class=hudson.views.DefaultMyViewsTabBar'
   clouds: ''
   slaves: ''
   scmCheckoutRetryCount: '0'
@@ -56,14 +75,14 @@ hudson:
     hudson.model.AllView:
       owner:
         attributes:
-          - 'class=hudson'
-          - 'reference=../../..'
+        - 'class=hudson'
+        - 'reference=../../..'
       name: 'All'
       filterExecutors: 'false'
       filterQueue: 'false'
       properties:
         attributes:
-          - 'class="hudson.model.View$PropertyList'
+        - 'class="hudson.model.View$PropertyList'
   primaryView: 'All'
   slaveAgentPort: '0'
   label: ''
@@ -100,48 +119,117 @@ sudo docker run \
 
 ### Migrating existing Jenkins
 
-If you already have a jenkins instance you can migrate your existing data and configuration to be used with this container. To accomplish this, you must add the `-v /path/to/jenkins_home:/var/jenkins_home` to the `docker run` command. Your `/path/to/jenkins_home` should allow you to point the following assets:
+If you already have a jenkins instance you can migrate your existing data and configuration to be used with this container. To accomplish this, you must mount the JENKINS_HOME by adding the `-v /path/to/jenkins_home:/var/jenkins_home` to the `docker run` command. Your `/path/to/jenkins_home` should allow you to point the following assets:
 
 1. **Existing jobs**: the jobs that you want to reuse and persist with this container should be located in your *host's* `/path/to/jenkins_home/jobs`. The jenkins running within the container will look for them in `/var/jenkins_home/jobs` during startup.
 
 2. **Existing plugins**: the plugins that you want to reuse and persist with this container should be located in your *host's* `/path/to/jenkins_home/plugins`. The jenkins running within the container will look for them in `/var/jenkins_home/plugins`.
 
+By default, the JENKINS_HOME is set to `~/.jenkins`. 
+
 ```bash
 docker run \
-  -ti \
-  -v `pwd`/JOB_DIRECTORY:/JOB_DIRECTORY \
-  --entrypoint="bash" \
-  verigreen/jenkins-tomcat-nginx -c "python xml2jobDSL.py JOB_DIRECTORY" > myjob.groovy
+  -d
+  -p $PORT_FOR_JENKINS:8081
+  -v `pwd`/.jenkins:/jenkins_home # Imported configuration
+  verigreen/jenkins-tomcat-nginx
 ```
+
+If you want to extract the configuration for your Jenkins to have programmatic control, [click here](docs/config_migration.md)
 
 ### The config.yml
 
-The specification for the config.yml allows you to modify sections of Jenkins' root configuration file. You need not provide a complete XML file with the intention of modifying only the authentication settings, for example.
+The specification for the config.yml allows you to modify Jenkins' root configuration file. You can keep track of your Jenkins instance with a single clean/readable configuration file.
 
 This YAML
 ```yaml
 hudson:
+  disabledAdministrativeMonitors: ''
+  version: '1.596.2'
+  numExecutors: '2'
+  mode: 'NORMAL'
+  useSecurity: 'true'
+  authorizationStrategy:
+    attributes:
+    - 'class=hudson.security.AuthorizationStrategy$Unsecured'
   securityRealm:
     attributes:
-      - 'class=hudson.security.HudsonPrivateSecurityRealm'
-    disableSignup: 'true'
-    enableCaptcha: 'false'
+    - 'class=hudson.security.SecurityRealm$None'
+  disableRememberMe: 'false'
+  projectNamingStrategy:
+    attributes:
+    - 'class=jenkins.model.ProjectNamingStrategy$DefaultProjectNamingStrategy'
+  workspaceDir: '${ITEM_ROOTDIR}/workspace'
+  buildsDir: '${ITEM_ROOTDIR}/builds'
+  jdks: ''
+  viewsTabBar: 
+    attributes:
+    - 'class=hudson.views.DefaultViewsTabBar'
+  myViewsTabBar:
+    attributes:
+    - 'class=hudson.views.DefaultMyViewsTabBar'
+  clouds: ''
+  slaves: ''
+  quietPeriod: '5'
+  scmCheckoutRetryCount: '0'
+  views:
+    hudson.model.AllView:
+      owner:
+        attributes:
+        - 'class=hudson'
+        - 'reference=../../..'
+      name: 'All'
+      filterExecutors: 'false'
+      filterQueue: 'false'
+      properties:
+        attributes:
+        - 'class=hudson.model.View$PropertyList'
+  primaryView: 'All'
+  slaveAgentPort: '0'
+  label: ''
+  nodeProperties: ''
+  globalNodeProperties: ''
 ```
 Will have this effect on the Jenkins configuration file
 ```xml
+<?xml version='1.0' encoding='UTF-8'?>
 <hudson>
-  .
-  .
-  <authorizationStrategy .../>
-  <securityRealm class="hudson.security.HudsonPrivateSecurityRealm">
-    <enableCaptcha>false</enableCaptcha>
-    <disableSignup>true</disableSignup>
-  </securityRealm>
-  <disableRememberMe>...</disableRememberMe>
-  .
-  .
+  <disabledAdministrativeMonitors/>
+  <version>1.596.2</version>
+  <numExecutors>2</numExecutors>
+  <mode>NORMAL</mode>
+  <useSecurity>true</useSecurity>
+  <authorizationStrategy class="hudson.security.AuthorizationStrategy$Unsecured"/>
+  <securityRealm class="hudson.security.SecurityRealm$None"/>
+  <disableRememberMe>false</disableRememberMe>
+  <projectNamingStrategy class="jenkins.model.ProjectNamingStrategy$DefaultProjectNamingStrategy"/>
+  <workspaceDir>${ITEM_ROOTDIR}/workspace</workspaceDir>
+  <buildsDir>${ITEM_ROOTDIR}/builds</buildsDir>
+  <jdks/>
+  <viewsTabBar class="hudson.views.DefaultViewsTabBar"/>
+  <myViewsTabBar class="hudson.views.DefaultMyViewsTabBar"/>
+  <clouds/>
+  <slaves/>
+  <quietPeriod>5</quietPeriod>
+  <scmCheckoutRetryCount>0</scmCheckoutRetryCount>
+  <views>
+    <hudson.model.AllView>
+      <owner class="hudson" reference="../../.."/>
+      <name>All</name>
+      <filterExecutors>false</filterExecutors>
+      <filterQueue>false</filterQueue>
+      <properties class="hudson.model.View$PropertyList"/>
+    </hudson.model.AllView>
+  </views>
+  <primaryView>All</primaryView>
+  <slaveAgentPort>0</slaveAgentPort>
+  <label></label>
+  <nodeProperties/>
+  <globalNodeProperties/>
 </hudson>
 ```
+
+For a brief reference on how to structure Jenkins' config.xml, click [here](docs/jenkins_xml_reference.md)
 
 Through the config.yml, you can also:
 
@@ -157,12 +245,10 @@ Through the config.yml, you can also:
 
 ```yaml
 hudson:
-  securityRealm:
-    attributes: 'database-authentication' # 1. Alias for 'class=hudson.security.HudsonPrivateSecurityRealm'
-    # attributes:
-    #   - 'class=hudson.security.HudsonPrivateSecurityRealm'
-    disableSignup: 'true'
-    enableCaptcha: 'false'
+  disabledAdministrativeMonitors: ''
+  version: '1.596.2'
+  numExecutors: '2'
+  . . .
 ---
 plugins: # 2. List of plugins 'PlUGIN:VERSION'
   - 'dockerhub:1.0'
@@ -177,10 +263,10 @@ certificates: # 4. List of certificates 'DOMAIN:PORT'
   - 'ldap.example2.com:636'
 ---
 commands: # 5. List of commands
-  - "echo 'jenkins.model.Jenkins.instance.securityRealm.createAccount(\"admin\", \"password\")'"
+  - echo 'jenkins.model.Jenkins.instance.securityRealm.createAccount("admin", "password")'
 ```
 
-####Examples
+###Examples
 
 #####Using Jenkins' database for authentication and authorization
 
@@ -189,107 +275,21 @@ commands: # 5. List of commands
 # Use Jenkins' own user database #
 ##################################
 hudson:
+  . . .
   securityRealm:
     attributes: 'database-authentication'
     disableSignup: 'true'
     enableCaptcha: 'false'
----
-hudson:
   authorizationStrategy:
     attributes: 'login-authorization'
+  . . .
 ---
 users:
   - 'user1:password1'
   - 'user2:password2'
 ```
 
-#####Using Jenkins' database for authentication and authorization (with matrix authorization)
-
-```yaml
-###################
-#DATABASE + MATRIX#
-###################
-hudson:
-  securityRealm:
-    attributes: 'database-authentication'
-    disableSignup: 'true'
-    enableCaptcha: 'false'
----
-hudson:
-  authorizationStrategy:
-    attributes: 'matrix-authorization'
-    permissions:
-      - 'overall-administer:user1'
-      - 'overall-configure-update-center:user1'
-      - 'overall-read:user1'
-      - 'overall-run-scripts:user1'
-      - 'overall-upload-plugins:user1'
----
-users:
-  - 'user1:password1' # Has all privileges
-  - 'user2:password2' # User has no privileges
-```
-
-#####Using LDAP authentication with basic login authorization
-
-```yaml
-##############
-#LDAP + LOGIN#
-##############
-hudson:
-  securityRealm:
-    attributes: 'ldap-authentication'
-    # attributes:
-    #   - 'class=hudson.security.LDAPSecurityRealm'
-    #   - 'plugin=ldap@1.6'
-    server: 'ldap://ldap.example.com:636'
-    rootDN: 'OU=users,DC=example,DC=net'
-    inhibitInferRootDN: ''
-    userSearchBase: ''
-    userSearch: 'sAMAccountName={0}'
-    groupSearchBase: ''
-    groupSearchFilter: ''
-    managerDN: 'CN=example@main.com,DC=example,DC=net'
-    managerPassword: 'MANAGER_PASSWORD'
-    disableMailAddressResolver: ''
----
-hudson:
-  authorizationStrategy:
-    attributes: 'login-authorization'
----
-certificates:
-  - 'ldap.example.net:636'
-```
-
-#####Using LDAP authentication with matrix authorization
-
-```yaml
-###############
-#LDAP + MATRIX#
-###############
-hudson:
-  securityRealm:
-    attributes: 'ldap-authentication'
-    # attributes:
-    #   - 'class=hudson.security.LDAPSecurityRealm'
-    #   - 'plugin=ldap@1.6'
-    server: 'ldap://ldap.example.com:636'
-    rootDN: 'OU=users,DC=example,DC=net'
-    inhibitInferRootDN: ''
-    userSearchBase: ''
-    userSearch: 'sAMAccountName={0}'
-    groupSearchBase: ''
-    groupSearchFilter: ''
-    managerDN: 'CN=example@main.com,DC=example,DC=net'
-    managerPassword: 'MANAGER_PASSWORD'
-    disableMailAddressResolver: ''
----
-hudson:
-  authorizationStrategy:
-    attributes: 'matrix-authorization'
-    permissions:
-      - 'overall-read:example2@mail.com' # User example2@mail.com will only have read permission
-```
+More [samples](docs/samples.md)
 
 ### Adding new plugins
 
@@ -305,17 +305,8 @@ plugins:
   - 'token-macro:1.10'
 ```
 
-###Adding an admin account
-You can create a quick admin account by setting the environment variable ADMIN_PASSWORD at run-time
+More on [plugins](docs/plugins.md)
 
-`Docker run`
-```bash
-sudo docker run \
-    -d \
-    -e ADMIN_PASSWORD=mysecretpass \
-    -p $PORT_FOR_JENKINS:8081 \
-    verigreen/jenkins-tomcat-nginx
-```
 ###Adding users programmatically
 Specify a list of users in the config.yml in the format <USERNAME:PASSWORD>. This list has to be a 'separate document', meaning that you have to separate the list from the others with three dashes ("---"). The container will parse each list item from the list and create an XML file for each user.
 
@@ -364,8 +355,8 @@ You can supply CLI commands to Jenkins listing the commands in the config.yml.
 .
 ---
 commands:
-  - "echo 'jenkins.model.Jenkins.instance.securityRealm.createAccount(\"admin\", \"password\")'"
-  - "echo 'restart'"
+  - echo 'jenkins.model.Jenkins.instance.securityRealm.createAccount("admin", "password")'
+  - echo 'restart'
 ```
 
 These commands will create a new user within Jenkins own user database and restart the server.
@@ -403,223 +394,3 @@ We use nginx to serve jenkins' static files. You may customize its configuration
 
 We use a process management tool called Supervisor (http://docs.docker.com/articles/using_supervisord/) to better handle our multi-process container. You may customize it by writing your own `supervisord.conf` configuration file and mapping it to the container using `-v /path/to/supervisord.conf:/etc/supervisor/conf.d/supervisord.conf:ro` volume mapping.  We recommend that you use the included `supervisord.conf` as a starting point. You must `run` or `restart` the container after modifications are done to pick up any changes.
 
-###Configuring Global Security Programmatically
-Let's look at how we can setup a secure Jenkins (via root config.xml)
-
-Here's a clean config.xml for your convenience:
-```xml
-<?xml version='1.0' encoding='UTF-8'?>
-<hudson>
-  <disabledAdministrativeMonitors/>
-  <version>1.0</version>
-  <numExecutors>2</numExecutors>
-  <mode>NORMAL</mode>
-  <useSecurity>true</useSecurity>
-  <authorizationStrategy class="hudson.security.AuthorizationStrategy$Unsecured"/>
-  <securityRealm class="hudson.security.SecurityRealm$None"/>
-  <disableRememberMe>false</disableRememberMe>
-  <projectNamingStrategy class="jenkins.model.ProjectNamingStrategy$DefaultProjectNamingStrategy"/>
-  <workspaceDir>${ITEM_ROOTDIR}/workspace</workspaceDir>
-  <buildsDir>${ITEM_ROOTDIR}/builds</buildsDir>
-  <markupFormatter class="hudson.markup.EscapedMarkupFormatter"/>
-  <jdks/>
-  <viewsTabBar class="hudson.views.DefaultViewsTabBar"/>
-  <myViewsTabBar class="hudson.views.DefaultMyViewsTabBar"/>
-  <clouds/>
-  <slaves/>
-  <scmCheckoutRetryCount>0</scmCheckoutRetryCount>
-  <views>
-    <hudson.model.AllView>
-      <owner class="hudson" reference="../../.."/>
-      <name>All</name>
-      <filterExecutors>false</filterExecutors>
-      <filterQueue>false</filterQueue>
-      <properties class="hudson.model.View$PropertyList"/>
-    </hudson.model.AllView>
-  </views>
-  <primaryView>All</primaryView>
-  <slaveAgentPort>0</slaveAgentPort>
-  <label></label>
-  <nodeProperties/>
-  <globalNodeProperties/>
-</hudson>
-```
-###Authentication
-####Ldap
-To make Jenkins authenticate via LDAP, add the following xml to your root `config.xml` with your own configuration values.
-```xml
-...
-<mode>...</mode>
-<useSecurity>...</useSecurity>
-<authorizationStrategy .../>
-<securityRealm class="hudson.security.LDAPSecurityRealm" plugin="ldap@1.6">
-    <server>ldap://ldap.example.com</server>
-    <rootDN>ou=People,O=example</rootDN>
-    <inhibitInferRootDN>false</inhibitInferRootDN>
-    <userSearchBase></userSearchBase>
-    <userSearch>uid={}</userSearch>
-    <groupSearchBase>groupAttr</groupSearchBase>
-    <groupSearchFilter>groupAttr=100</groupSearchFilter>
-    <managerDN>cn=john.doe@example.com,ou=people,o=example</managerDN>
-    <managerPassword>bG9s</managerPassword>
-    <disableMailAddressResolver>false</disableMailAddressResolver>
-</securityRealm>
-...
-```
-The values provided in the snippet should serve as a clue as to how to format your own.
-
-The value for `<managerPassword>` is base64 encoded. This is how Jenkins stores passwords and it is how it'll read them.
-
-Open up a terminal and run the following command to get the base64 version of your password
-`echo <MYPASSWORD> | base64 | awk -F'=' '{print $1}'`
-
-Replace `<MYPASSWORD>` with your own and put the result of the command in the `<managerPassword>` node.
-
->NOTE: If you want to make sure you got the right encoding for your password, you can run the following command and see for yourself
->`echo <ENCODED_PASSWORD> | base64 --decode`
->You might receive a warning if your password's base64 encoding is not divisible by 3 bytes. You can go ahead and ignore this.
-
-Once you're finished with the root config file. Go ahead and restart Jenkins by running
-`sudo docker exec <CONTAINERNAME> /bin/bash -c "supervisorctl restart all:jenkins"`
-If you're already inside the container, you can achieve the same running these commands
-`${CATALINA_HOME}/bin/catalina.sh stop`
-`${CATALINA_HOME}/bin/catalina.sh start`
-
-You should now have Jenkins configured for LDAP authentication.
-
-> NOTE: If you get an SSL handshake exception while configuring LDAP in Jenkins, you will probably have to add the SSL certificate to Java's keystore.
->
-> You can do the following:  
->
-> 1) Access the container via `sudo docker exec -ti <CONTAINER_NAME> /bin/bash`  
-> 2) Download your SSL certificate. If you have the server running, you can download it directly
-`echo -n | openssl s_client -connect <HOST>:<PORT> | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > /tmp/<SERVERNAME>.crt`
->3) Use the keytool to add the SSL certificate to Java's keystore (keystore password = `changeit`)
-`keytool -import -trustcacerts -alias <HOST_NAME> -file /tmp/<SERVERNAME>.crt -keystore ${JAVA_HOME}/jre/lib/security/cacerts`
-> 4) Check to see if the SS certificate was added to the keystore successfully
-`keytool -list -v -keystore /usr/lib/jvm/java-7-openjdk-amd64/jre/lib/security/cacerts`
->5) Restart Jenkins
->
->Alternatively, you can provide a text file (specifying the servers which you want Jenkins to have access to) to the container and it will try to add the certs to the keystore. If no port is specified, port 443 will be used.
->```
->ldap.example.com:443
->ldap.example2.com:636
->ldap.example3.com
->```
->`-v path/to/SSLcerts.txt:/SSLcerts.txt`
->
->Finally, to check if everything works, access the container and run this command
->`cd Cert-Install-Tool/ && java SSLPoke ldap.example.com 443`
->This will send a byte to your LDAP server and verify confidentiality.
->
->If you're still getting a handshake exception, you can try downloading a different certificate (assuming the server yields multiple SSL certificates).
->Just append whichever one you want to download to the server:port entry.
->```
->ldap.example.com:443:1
->ldap.example2.com:636:2
->ldap.example3.com:443:1
->```
-
-
-####Jenkins’ own user database
-```xml
-...
-<mode>...</mode>
-<useSecurity>...</useSecurity>
-<authorizationStrategy .../>
-<securityRealm class="hudson.security.HudsonPrivateSecurityRealm">
-    <disableSignup>false</disableSignup>
-    <enableCaptcha>false</enableCaptcha>
-</securityRealm>
-...
-```
-####Unix user/group database
-```xml
-...
-<mode>...</mode>
-<useSecurity>...</useSecurity>
-<authorizationStrategy .../>
-<securityRealm class="hudson.security.PAMSecurityRealm" plugin="pam-auth@1.1">
-    <serviceName>sshd</serviceName>
-</securityRealm>
-...
-```
-###Authorization
-####Anyone can do anything
-```xml
-...
-<numExecutors>...</numExecutors>
-<mode>...</mode>
-<useSecurity>true</useSecurity>
-<authorizationStrategy class="hudson.security.AuthorizationStrategy$Unsecured"/>
-<securityRealm .../>
-<disableRememberMe>...</disableRememberMe>
-...
-```
-####Legacy mode
-```xml
-...
-<numExecutors>...</numExecutors>
-<mode>...</mode>
-<useSecurity>true</useSecurity>
-<authorizationStrategy class="hudson.security.LegacyAuthorizationStrategy"/>
-<securityRealm .../>
-<disableRememberMe>...</disableRememberMe>
-...
-```
-####Logged-in users can do anything
-```xml
-...
-<numExecutors>...</numExecutors>
-<mode>...</mode>
-<useSecurity>true</useSecurity>
-<authorizationStrategy class="hudson.security.FullControlOnceLoggedInAuthorizationStrategy"/>
-<securityRealm .../>
-<disableRememberMe>...</disableRememberMe>
-...
-```
-####Matrix-based security
-Here we give `Anonymous`  reading privileges and we give `User1` full control.
-```xml
-...
-<numExecutors>...</numExecutors>
-<mode>...</mode>
-<useSecurity>true</useSecurity>
-<authorizationStrategy class="hudson.security.ProjectMatrixAuthorizationStrategy">
-    <permission>com.cloudbees.plugins.credentials.CredentialsProvider.Create:user1</permission>
-    <permission>com.cloudbees.plugins.credentials.CredentialsProvider.Delete:user1</permission>
-    <permission>com.cloudbees.plugins.credentials.CredentialsProvider.ManageDomains:user1</permission>
-    <permission>com.cloudbees.plugins.credentials.CredentialsProvider.Update:user1</permission>
-    <permission>com.cloudbees.plugins.credentials.CredentialsProvider.View:user1</permission>
-    <permission>hudson.model.Computer.Build:user1</permission>
-    <permission>hudson.model.Computer.Configure:user1</permission>
-    <permission>hudson.model.Computer.Connect:user1</permission>
-    <permission>hudson.model.Computer.Create:user1</permission>
-    <permission>hudson.model.Computer.Delete:user1</permission>
-    <permission>hudson.model.Computer.Disconnect:user1</permission>
-    <permission>hudson.model.Hudson.Administer:user1</permission>
-    <permission>hudson.model.Hudson.ConfigureUpdateCenter:user1</permission>
-    <permission>hudson.model.Hudson.Read:anonymous</permission>
-    <permission>hudson.model.Hudson.Read:user1</permission>
-    <permission>hudson.model.Hudson.RunScripts:user1</permission>
-    <permission>hudson.model.Hudson.UploadPlugins:user1</permission>
-    <permission>hudson.model.Item.Build:user1</permission>
-    <permission>hudson.model.Item.Cancel:user1</permission>
-    <permission>hudson.model.Item.Configure:user1</permission>
-    <permission>hudson.model.Item.Create:user1</permission>
-    <permission>hudson.model.Item.Delete:user1</permission>
-    <permission>hudson.model.Item.Discover:user1</permission>
-    <permission>hudson.model.Item.Read:user1</permission>
-    <permission>hudson.model.Item.Workspace:user1</permission>
-    <permission>hudson.model.Run.Delete:user1</permission>
-    <permission>hudson.model.Run.Update:user1</permission>
-    <permission>hudson.model.View.Configure:user1</permission>
-    <permission>hudson.model.View.Create:user1</permission>
-    <permission>hudson.model.View.Delete:user1</permission>
-    <permission>hudson.model.View.Read:user1</permission>
-    <permission>hudson.scm.SCM.Tag:user1</permission>
-</authorizationStrategy>
-<securityRealm .../>
-<disableRememberMe>...</disableRememberMe>
-...
-```

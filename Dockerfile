@@ -68,8 +68,9 @@ ADD run-tomcat.sh /run.sh
 # General YAML parser
 ADD configparser.py /configparser.py
 
-# Job migration tool
+# Job migration tools
 ADD xml2jobDSL.py /xml2jobDSL.py
+ADD xml2yaml.py /xml2yaml.py
 
 # Set the home folder for jenkins
 ENV JENKINS_HOME /var/jenkins_home
