@@ -261,7 +261,7 @@ fi
 		echo -n | openssl s_client -showcerts -connect $ADDRESS:$PORT | \
 		sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > /tmp/$ADDRESS.cert
 
-		$JAVA_HOME/bin/keytool -import -alias $ADDRESS-$PORT -keystore $JAVA_HOME/jre/lib/security/cacerts -file /tmp/$ADDRESS.cert
+		echo "changeit" | $JAVA_HOME/bin/keytool -import -alias $ADDRESS-$PORT -keystore $JAVA_HOME/jre/lib/security/cacerts -file /tmp/$ADDRESS.cert
 
 	done < /SSLcerts.txt
 
