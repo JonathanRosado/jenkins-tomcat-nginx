@@ -250,7 +250,6 @@ fi
 # and feeding them to the InstallCert tool
 # found in the Cert-Install-Tool/ directory at root
 [[ -f /SSLcerts.txt ]] && \
-	cd /Cert-Install-Tool && \
 	while read i;
 	do
 		ADDRESS=$(echo $i | awk -F':' '{print $1}');
