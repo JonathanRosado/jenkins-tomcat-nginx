@@ -252,15 +252,30 @@ fi
 [[ -f /SSLcerts.txt ]] && \
 	while read i;
 	do
+
 		ADDRESS=$(echo $i | awk -F':' '{print $1}');
 		PORT=$(echo $i | awk -F':' '{print $2}');
+		CERT_IN_CHAIN=$(echo $i | awk -F':' '{print $3}');
 
 		echo "RUN: Downloading certificate for $ADDRESS:$PORT"
 
+		# Store the whole certificate chain in /tmp/ADDRESS.cert
 		echo -n | openssl s_client -showcerts -connect $ADDRESS:$PORT | \
-		sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > /tmp/$ADDRESS.cert
+		sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > /tmp/$ADDRESS-$PORT-$CERT_IN_CHAIN.cert
 
-		echo -e "changeit\nyes" | $JAVA_HOME/bin/keytool -import -alias $ADDRESS-$PORT -keystore $JAVA_HOME/jre/lib/security/cacerts -file /tmp/$ADDRESS.cert
+# 		# Grab the nth certificate from the chain
+python -c "
+import re
+
+pattern = re.compile(\"\-\-\-\-\-BEGIN CERTIFICATE\-\-\-\-\-[^-]+\-\-\-\-\-END CERTIFICATE\-\-\-\-\-\")
+
+with open (\"/tmp/${ADDRESS}-${PORT}-${CERT_IN_CHAIN}.cert\", \"r\") as certificateFile:
+  certificateData = certificateFile.read()
+
+print pattern.findall(certificateData)[${CERT_IN_CHAIN} - 1]" > /tmp/${ADDRESS}-${PORT}-${CERT_IN_CHAIN}_single.cert
+
+
+		echo -e "changeit\nyes" | $JAVA_HOME/bin/keytool -import -alias $ADDRESS-$PORT-$CERT_IN_CHAIN -keystore $JAVA_HOME/jre/lib/security/cacerts -file /tmp/${ADDRESS}-${PORT}-${CERT_IN_CHAIN}_single.cert
 
 	done < /SSLcerts.txt
 
