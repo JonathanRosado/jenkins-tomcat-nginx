@@ -47,11 +47,11 @@ hudson:
   mode: 'NORMAL'
   useSecurity: 'true'
   authorizationStrategy:
-    attributes:
-    - 'class=hudson.security.AuthorizationStrategy$Unsecured'
+    attributes: 'login-authorization'
   securityRealm:
-    attributes:
-    - 'class=hudson.security.SecurityRealm$None'
+    attributes: 'database-authentication'
+    disableSignup: 'true'
+    enableCaptcha: 'false'
   disableRememberMe: 'false'
   projectNamingStrategy:
     attributes:
@@ -90,8 +90,9 @@ hudson:
   globalNodeProperties: ''
 ---
 users:
-  - 'user1:password1'
-  - 'user2:password2'
+  unhashed:
+    - 'user1:password1'
+    - 'user2:password2'
 ```
 
 Then, from your host, you may access the jenkins UI at `localhost:$PORT_FOR_JENKINS`.
@@ -255,12 +256,14 @@ plugins: # 2. List of plugins 'PlUGIN:VERSION'
   - 'token-macro:1.10'
 ---
 users: # 3. List of users 'USERNAME:PASSWORD'
-  - 'user1:password1'
-  - 'user2:password2'
+  unhashed:
+    - 'user1:password1'
+    - 'user2:password2'
 ---
-certificates: # 4. List of certificates 'DOMAIN:PORT'
-  - 'ldap.example1.net:636'
-  - 'ldap.example2.com:636'
+certificates: # 4. List of certificates 'DOMAIN:PORT:CERTIFICATE'
+  remote:
+    - 'ldap.example1.net:636:1' # The third parameter let's you choose a specific certificate in the certificate chain
+    - 'ldap.example2.com:636:1' # If unsure, leave it at `1`
 ---
 commands: # 5. List of commands
   - echo 'jenkins.model.Jenkins.instance.securityRealm.createAccount("admin", "password")'
@@ -285,8 +288,9 @@ hudson:
   . . .
 ---
 users:
-  - 'user1:password1'
-  - 'user2:password2'
+  unhashed:
+    - 'user1:password1'
+    - 'user2:password2'
 ```
 
 More [samples](docs/samples.md)
