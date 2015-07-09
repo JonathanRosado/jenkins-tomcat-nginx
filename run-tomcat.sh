@@ -95,13 +95,25 @@ function take_care_of_special_cases {
 
 		return 1;
 
-	elif [[ "${NODE_NAME}" == "certificates" ]]; then
+	elif [[ "$NODE_PATH" == "/certificates" ]] && [[ "${NODE_NAME}" == "remote" ]]; then
 
 		LIST=$(python -c "for i in ${NODE_VALUE}: print i;")
 
 		IFS=$'\n'
 		for i in $LIST; do
 			echo $i >> /SSLcerts.txt
+		done
+		unset IFS
+
+		return 1;
+
+	elif [[ "$NODE_PATH" == "/certificates" ]] && [[ "${NODE_NAME}" == "local" ]]; then
+
+		LIST=$(python -c "for i in ${NODE_VALUE}: print i;")
+
+		IFS=$'\n'
+		for i in $LIST; do
+			echo $i >> /SSLcerts_local.txt
 		done
 		unset IFS
 
@@ -245,10 +257,9 @@ fi
 	ln -s /jenkins_home
 
 
-# If SSLcerts.txt was mounted to the root folder,
+# If SSLcerts.txt is found in the root folder,
 # read the file line by line, parsing each line
-# and feeding them to the InstallCert tool
-# found in the Cert-Install-Tool/ directory at root
+# and feeding them to the Java keytool
 [[ -f /SSLcerts.txt ]] && \
 	while read i;
 	do
@@ -280,7 +291,21 @@ print pattern.findall(certificateData)[${CERT_IN_CHAIN} - 1]" > /tmp/${ADDRESS}-
 	done < /SSLcerts.txt
 
 
-# If users.txt was mounted,
+# If SSLcerts_local.txt is found in the root folder,
+# read the file line by line, grabing the certificate
+# from the mounted directory and feeding it to the keytool
+[[ -f /SSLcerts_local.txt ]] && \
+	while read i;
+	do
+
+		echo "RUN: Importing local certificate in $i"
+
+		echo -e "changeit\nyes" | $JAVA_HOME/bin/keytool -import -alias $i -keystore $JAVA_HOME/jre/lib/security/cacerts -file $i
+
+	done < /SSLcerts_local.txt
+
+
+# If users.txt was is found,
 # loop through the file and
 # create each user
 [[ -f /users.txt ]] && \

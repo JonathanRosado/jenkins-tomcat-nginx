@@ -38,15 +38,15 @@ ENV JENKINS_VERSION=1.596.2 \
 # Install the necessary packages to download and install Tomcat and Jenkins
 # Clean up packages
 # TODO: openjdk-7-jre endpoints seem to be unreliable. apt-get fails to get packages, causing image build to fail.
-RUN apt-get update && apt-get install -y -f git 
-RUN apt-get install -y -f wget 
-RUN apt-get install -y -f curl 
-RUN apt-get install -y -f supervisor 
-RUN apt-get install -y -f openjdk-7-jre
-RUN apt-get install -y -f fastjar
-RUN apt-get install -y -f ca-certificates 
-RUN apt-get install -y -f xmlstarlet
-RUN apt-get install -y -f python-lxml
+RUN apt-get update && apt-get install -y git 
+RUN apt-get install -y wget 
+RUN apt-get install -y curl 
+RUN apt-get install -y supervisor 
+RUN apt-get install -y openjdk-7-jre
+RUN apt-get install -y fastjar
+RUN apt-get install -y ca-certificates 
+RUN apt-get install -y xmlstarlet
+RUN apt-get install -y python-lxml
 RUN wget -q https://archive.apache.org/dist/tomcat/tomcat-${TOMCAT_MAJOR_VERSION}/v${TOMCAT_MINOR_VERSION}/bin/apache-tomcat-${TOMCAT_MINOR_VERSION}.tar.gz
 RUN wget -qO- https://archive.apache.org/dist/tomcat/tomcat-${TOMCAT_MAJOR_VERSION}/v${TOMCAT_MINOR_VERSION}/bin/apache-tomcat-${TOMCAT_MINOR_VERSION}.tar.gz.md5 | md5sum -c - 
 RUN curl --silent --show-error --retry 5 https://bootstrap.pypa.io/get-pip.py | python2.7 
