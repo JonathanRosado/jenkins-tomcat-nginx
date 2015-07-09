@@ -193,8 +193,9 @@ hudson:
   . . .
 ---
 users:
-  - 'user1:password1'
-  - 'user2:password2'
+  unhashed:
+    - 'user1:password1'
+    - 'user2:password2'
 ```
 
 #####Using Jenkins' database for authentication and authorization (with matrix authorization)
@@ -220,8 +221,9 @@ hudson:
   . . .
 ---
 users:
-  - 'user1:password1' # Has all privileges
-  - 'user2:password2' # User has no privileges
+  unhashed:
+    - 'user1:password1' # Has all privileges
+    - 'user2:password2' # User has no privileges
 ```
 
 #####Using LDAP authentication with basic login authorization
@@ -251,8 +253,9 @@ hudson:
     attributes: 'login-authorization'
   . . .
 ---
-certificates:
-  - 'ldap.example.net:636'
+certificates: # 4. List of certificates 'DOMAIN:PORT:CERTIFICATE'
+  remote:
+    - 'ldap.example.net:636:1' # The third parameter let's you choose a specific certificate in the certificate chain
 ```
 
 #####Using LDAP authentication with matrix authorization
